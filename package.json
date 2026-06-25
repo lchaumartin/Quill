@@ -1,0 +1,30 @@
+{
+  "name": "com.leochaumartin.quill",
+  "version": "0.1.0",
+  "displayName": "Quill — Declarative UI",
+  "description": "A declarative, reactive UI framework for Unity. Author interfaces in .ui documents with reactive bindings, anchors, positioners, reusable components, signals, animations, custom shaders, and a clean C# interop layer. Rendered at a low level (single SDF pass for rectangles, lightweight textured layers for text/images/effects), independent of uGUI and UI Toolkit. URP and Built-in render pipelines supported.",
+  "unity": "6000.0",
+  "author": {
+    "name": "Leo CHAUMARTIN"
+  },
+  "keywords": [
+    "ui",
+    "gui",
+    "declarative",
+    "reactive",
+    "framework",
+    "menu"
+  ],
+  "dependencies": {
+    "com.unity.inputsystem": "1.11.0"
+  },
+  "samples": [
+    {
+      "displayName": "Demos",
+      "description": "A widget gallery and a full game-menu hierarchy, with a bootstrap component.",
+      "path": "Samples~/Demos"
+    }
+  ],
+  "license": "LicenseRef-Proprietary",
+  "hideInEditor": false
+}

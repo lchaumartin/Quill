@@ -1,0 +1,33 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. All rights reserved.
+//
+// Button — a clickable control. Public API: `text`, read-only-ish `down`, signal `clicked`.
+// Use:  Button { text: "Run"; onClicked: runs = runs + 1 }
+Rectangle {
+    id: control
+
+    property string text: "Button"
+    property bool down: ma.pressed
+    signal clicked
+
+    width: 160
+    height: 44
+    radius: 8
+    color: ma.pressed ? "#1565c0" : (ma.containsMouse ? "#1e88e5" : "#22304d")
+    border.width: 1
+    border.color: "#4fc3f7"
+
+    Text {
+        text: control.text
+        color: "#e8eef7"
+        fontSize: 15
+        anchors.centerIn: parent
+    }
+
+    MouseArea {
+        id: ma
+        anchors.fill: parent
+        hoverEnabled: true
+        onClicked: control.clicked()
+    }
+}

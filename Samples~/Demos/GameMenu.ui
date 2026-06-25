@@ -1,0 +1,382 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. All rights reserved.
+//
+// Quill — Game Menu Hierarchy
+// A complete, navigable front-end built on the reusable Controls (Button/Slider/Switch/CheckBox).
+// Navigation is a single `screen` state property + `visible:` bindings; Settings has its own tabs.
+// Assign to QuillDemo's "Quill File" slot (Esc toggles the whole surface via QuillSurface.Visible).
+
+Item {
+    id: root
+
+    // Navigation state.
+    property string screen: "main"       // main | play | settings | credits | quit | ingame
+    property string tab: "audio"         // audio | video | controls
+    property string difficulty: "normal" // easy | normal | hard
+
+    property real phase: 0
+    NumberAnimation on phase { from: 0; to: 1; duration: 2200; loops: Animation.Infinite; easing.type: Easing.InOutSine }
+
+    // ---- Background -----------------------------------------------------------------------------
+    ShaderEffect {
+        anchors.fill: parent
+        shader: "Quill/Effect/Plasma"
+        speed: 0.25
+        scale: 0.7
+        opacity: 0.16
+    }
+    Rectangle { anchors.fill: parent; color: "#0a0e16"; opacity: 0.82 }
+
+    // ---- Title (always visible) -----------------------------------------------------------------
+    Text {
+        id: title
+        text: "AETHER  PROTOCOL"
+        color: "#e8eef7"
+        fontSize: 40
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: 64
+    }
+    Rectangle {
+        width: 360; height: 2
+        color: "#4fc3f7"
+        opacity: 0.5 + 0.5 * phase
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: title.bottom
+        anchors.topMargin: 12
+    }
+    Text {
+        text: "build 0.9.1  ·  qmlui front-end"
+        color: "#5b6b86"
+        fontSize: 13
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 18
+    }
+
+    // =============================================================================================
+    // MAIN
+    // =============================================================================================
+    Item {
+        anchors.fill: parent
+        visible: root.screen == "main"
+
+        Column {
+            spacing: 14
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: 40
+
+            Button { width: 300; height: 54; text: "PLAY";     onClicked: root.screen = "play" }
+            Button { width: 300; height: 54; text: "SETTINGS"; onClicked: root.screen = "settings" }
+            Button { width: 300; height: 54; text: "CREDITS";  onClicked: root.screen = "credits" }
+            Button { width: 300; height: 54; text: "QUIT";     onClicked: root.screen = "quit" }
+        }
+    }
+
+    // =============================================================================================
+    // PLAY — difficulty select
+    // =============================================================================================
+    Item {
+        anchors.fill: parent
+        visible: root.screen == "play"
+
+        Column {
+            spacing: 24
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: 30
+
+            Text { text: "SELECT DIFFICULTY"; color: "#9fb3d1"; fontSize: 16; anchors.horizontalCenter: parent.horizontalCenter }
+
+            Row {
+                spacing: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                Rectangle {
+                    width: 130; height: 76; radius: 10
+                    color: root.difficulty == "easy" ? "#15233f" : "#11192a"
+                    border.width: 2
+                    border.color: root.difficulty == "easy" ? "#4fc3f7" : "#243049"
+                    Text { text: "EASY"; color: root.difficulty == "easy" ? "#ffffff" : "#9fb3d1"; fontSize: 17; anchors.centerIn: parent }
+                    MouseArea { anchors.fill: parent; onClicked: root.difficulty = "easy" }
+                }
+                Rectangle {
+                    width: 130; height: 76; radius: 10
+                    color: root.difficulty == "normal" ? "#15233f" : "#11192a"
+                    border.width: 2
+                    border.color: root.difficulty == "normal" ? "#4fc3f7" : "#243049"
+                    Text { text: "NORMAL"; color: root.difficulty == "normal" ? "#ffffff" : "#9fb3d1"; fontSize: 17; anchors.centerIn: parent }
+                    MouseArea { anchors.fill: parent; onClicked: root.difficulty = "normal" }
+                }
+                Rectangle {
+                    width: 130; height: 76; radius: 10
+                    color: root.difficulty == "hard" ? "#15233f" : "#11192a"
+                    border.width: 2
+                    border.color: root.difficulty == "hard" ? "#ef5350" : "#243049"
+                    Text { text: "HARD"; color: root.difficulty == "hard" ? "#ffffff" : "#9fb3d1"; fontSize: 17; anchors.centerIn: parent }
+                    MouseArea { anchors.fill: parent; onClicked: root.difficulty = "hard" }
+                }
+            }
+
+            Row {
+                spacing: 14
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button { width: 150; height: 50; text: "BACK";  onClicked: root.screen = "main" }
+                Button { width: 200; height: 50; text: "LAUNCH"; onClicked: root.screen = "ingame" }
+            }
+        }
+    }
+
+    // =============================================================================================
+    // SETTINGS — tabbed
+    // =============================================================================================
+    Item {
+        anchors.fill: parent
+        visible: root.screen == "settings"
+
+        // Tab bar
+        Row {
+            id: tabBar
+            spacing: 0
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
+            anchors.topMargin: 168
+
+            Rectangle {
+                width: 150; height: 44
+                color: root.tab == "audio" ? "#1e88e5" : "#141c2e"
+                border.width: 1; border.color: "#243049"
+                Text { text: "AUDIO"; color: root.tab == "audio" ? "#ffffff" : "#9fb3d1"; fontSize: 14; anchors.centerIn: parent }
+                MouseArea { anchors.fill: parent; onClicked: root.tab = "audio" }
+            }
+            Rectangle {
+                width: 150; height: 44
+                color: root.tab == "video" ? "#1e88e5" : "#141c2e"
+                border.width: 1; border.color: "#243049"
+                Text { text: "VIDEO"; color: root.tab == "video" ? "#ffffff" : "#9fb3d1"; fontSize: 14; anchors.centerIn: parent }
+                MouseArea { anchors.fill: parent; onClicked: root.tab = "video" }
+            }
+            Rectangle {
+                width: 150; height: 44
+                color: root.tab == "controls" ? "#1e88e5" : "#141c2e"
+                border.width: 1; border.color: "#243049"
+                Text { text: "CONTROLS"; color: root.tab == "controls" ? "#ffffff" : "#9fb3d1"; fontSize: 14; anchors.centerIn: parent }
+                MouseArea { anchors.fill: parent; onClicked: root.tab = "controls" }
+            }
+        }
+
+        // Panel frame
+        Rectangle {
+            id: panel
+            width: 520
+            height: 240
+            radius: 12
+            color: "#0e1626"
+            border.width: 1
+            border.color: "#243049"
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: tabBar.bottom
+            anchors.topMargin: 0
+
+            // --- AUDIO ---
+            Column {
+                anchors.fill: parent
+                anchors.margins: 26
+                spacing: 18
+                visible: root.tab == "audio"
+
+                Item {
+                    width: 468; height: 36
+                    Text { text: "Master Volume"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    Slider { id: masterVol; width: 240; value: 0.8; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+                Item {
+                    width: 468; height: 36
+                    Text { text: "Music"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    Slider { id: musicVol; width: 240; value: 0.6; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+                Item {
+                    width: 468; height: 36
+                    Text { text: "Effects"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    Slider { id: sfxVol; width: 240; value: 0.75; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+                Item {
+                    width: 468; height: 32
+                    Text { text: "Mute all"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    Switch { id: muteAll; checked: false; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+            }
+
+            // --- VIDEO ---
+            Column {
+                anchors.fill: parent
+                anchors.margins: 26
+                spacing: 18
+                visible: root.tab == "video"
+
+                Item {
+                    width: 468; height: 32
+                    Text { text: "Fullscreen"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    Switch { id: fullscreen; checked: true; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+                Item {
+                    width: 468; height: 32
+                    Text { text: "V-Sync"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    Switch { id: vsync; checked: true; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+                Item {
+                    width: 468; height: 36
+                    Text { text: "Brightness"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    Slider { id: brightness; width: 240; value: 0.5; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+                Item {
+                    width: 468; height: 36
+                    Text { text: "Field of View"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    Slider { id: fov; width: 240; value: 0.7; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+            }
+
+            // --- CONTROLS ---
+            Column {
+                anchors.fill: parent
+                anchors.margins: 26
+                spacing: 18
+                visible: root.tab == "controls"
+
+                Item {
+                    width: 468; height: 36
+                    Text { text: "Look Sensitivity"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    Slider { id: sensitivity; width: 240; value: 0.55; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+                Item {
+                    width: 468; height: 32
+                    Text { text: "Invert Y axis"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    CheckBox { id: invertY; checked: false; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+                Item {
+                    width: 468; height: 32
+                    Text { text: "Aim assist"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    CheckBox { id: aimAssist; checked: true; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+                Item {
+                    width: 468; height: 32
+                    Text { text: "Vibration"; color: "#c7d2e4"; fontSize: 15; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                    Switch { id: vibration; checked: true; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                }
+            }
+        }
+
+        Button {
+            width: 200; height: 48; text: "BACK"
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: panel.bottom
+            anchors.topMargin: 22
+            onClicked: root.screen = "main"
+        }
+    }
+
+    // =============================================================================================
+    // CREDITS
+    // =============================================================================================
+    Item {
+        anchors.fill: parent
+        visible: root.screen == "credits"
+
+        Column {
+            spacing: 8
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+
+            Text { text: "DESIGN & CODE";   color: "#5b6b86"; fontSize: 13; anchors.horizontalCenter: parent.horizontalCenter }
+            Text { text: "you";              color: "#e8eef7"; fontSize: 20; anchors.horizontalCenter: parent.horizontalCenter }
+            Text { text: " ";                color: "#000000"; fontSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
+            Text { text: "UI FRAMEWORK";     color: "#5b6b86"; fontSize: 13; anchors.horizontalCenter: parent.horizontalCenter }
+            Text { text: "Quill for Unity";  color: "#e8eef7"; fontSize: 20; anchors.horizontalCenter: parent.horizontalCenter }
+            Text { text: " ";                color: "#000000"; fontSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
+            Text { text: "SPECIAL THANKS";   color: "#5b6b86"; fontSize: 13; anchors.horizontalCenter: parent.horizontalCenter }
+            Text { text: "the players";      color: "#e8eef7"; fontSize: 20; anchors.horizontalCenter: parent.horizontalCenter }
+        }
+
+        Button {
+            width: 200; height: 48; text: "BACK"
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 80
+            onClicked: root.screen = "main"
+        }
+    }
+
+    // =============================================================================================
+    // QUIT — confirm dialog
+    // =============================================================================================
+    Item {
+        anchors.fill: parent
+        visible: root.screen == "quit"
+
+        Rectangle { anchors.fill: parent; color: "#000000"; opacity: 0.4 }
+
+        Rectangle {
+            width: 440; height: 200; radius: 14
+            color: "#0e1626"
+            border.width: 1; border.color: "#2a3a55"
+            anchors.centerIn: parent
+
+            Text {
+                text: "Quit to desktop?"
+                color: "#e8eef7"; fontSize: 22
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top; anchors.topMargin: 34
+            }
+            Text {
+                text: "Unsaved progress will be lost."
+                color: "#8893a8"; fontSize: 14
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top; anchors.topMargin: 74
+            }
+
+            Row {
+                spacing: 16
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 28
+                Button { width: 170; height: 48; text: "CANCEL"; onClicked: root.screen = "main" }
+                Rectangle {
+                    width: 170; height: 48; radius: 8
+                    color: quitMouse.pressed ? "#b71c1c" : (quitMouse.containsMouse ? "#c62828" : "#3a1414")
+                    border.width: 1; border.color: "#ef5350"
+                    Text { text: "QUIT"; color: "#ffd9d9"; fontSize: 15; anchors.centerIn: parent }
+                    MouseArea { id: quitMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.screen = "quit_done" }
+                }
+            }
+        }
+    }
+
+    // =============================================================================================
+    // IN-GAME (placeholder) + pause overlay
+    // =============================================================================================
+    Item {
+        anchors.fill: parent
+        visible: root.screen == "ingame"
+
+        Text {
+            text: "MISSION ACTIVE  ·  " + root.difficulty
+            color: "#66bb6a"; fontSize: 18
+            anchors.centerIn: parent
+        }
+        Button {
+            width: 220; height: 48; text: "ABORT TO MENU"
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 80
+            onClicked: root.screen = "main"
+        }
+    }
+
+    // Final quit state.
+    Item {
+        anchors.fill: parent
+        visible: root.screen == "quit_done"
+        Text { text: "(the application would now close)"; color: "#5b6b86"; fontSize: 16; anchors.centerIn: parent }
+    }
+}
+                                                                                                                                                                          
