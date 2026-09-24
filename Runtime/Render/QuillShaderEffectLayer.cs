@@ -1,5 +1,5 @@
 // Quill for Unity — a declarative, reactive UI framework.
-// Copyright (c) 2026 Leo CHAUMARTIN. All rights reserved.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
 //
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,7 +9,8 @@ namespace Quill
     /// <summary>
     /// Draws each <see cref="QuillShaderEffect"/> as a clip-space quad using the Unity shader named by
     /// its <c>shader</c> property. Custom Quill properties are forwarded as uniforms of the same name;
-    /// standard uniforms (_Rect, _ScreenSize, _Time, _Opacity) are always set. Materials are pooled
+    /// standard uniforms (_Rect, _ScreenSize, _Opacity) are always set; for time, shaders read Unity's
+    /// built-in <c>_Time</c> (<c>_Time.y</c> = seconds since level load). Materials are pooled
     /// and rebuilt only when an effect's shader name changes.
     /// </summary>
     internal sealed class QuillShaderEffectLayer
@@ -31,7 +32,6 @@ namespace Quill
 
         private static readonly int IdRect = Shader.PropertyToID("_Rect");
         private static readonly int IdScreen = Shader.PropertyToID("_ScreenSize");
-        private static readonly int IdTime = Shader.PropertyToID("_Time");
         private static readonly int IdOpacity = Shader.PropertyToID("_Opacity");
 
         // Built-in item properties that must NOT be forwarded as shader uniforms.
@@ -49,8 +49,6 @@ namespace Quill
 
         public void Render(List<QuillShaderEffect> effects, float w, float h)
         {
-            float time = Time.timeSinceLevelLoad;
-
             for (int i = 0; i < effects.Count; i++)
             {
                 var fx = effects[i];
@@ -77,7 +75,6 @@ namespace Quill
                 // Standard uniforms.
                 mat.SetVector(IdRect, new Vector4(x, y, fw, fh));
                 mat.SetVector(IdScreen, new Vector4(w, h, 1f / w, 1f / h));
-                mat.SetFloat(IdTime, time);
                 mat.SetFloat(IdOpacity, Mathf.Clamp01(fx.EffectiveOpacity()));
 
                 // Forward custom properties as same-named uniforms.

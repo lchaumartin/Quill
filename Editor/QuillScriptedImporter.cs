@@ -1,5 +1,5 @@
 // Quill for Unity — a declarative, reactive UI framework.
-// Copyright (c) 2026 Leo CHAUMARTIN. All rights reserved.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
 //
 using System.IO;
 using UnityEditor.AssetImporters;

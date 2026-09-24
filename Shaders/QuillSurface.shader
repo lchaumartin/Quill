@@ -1,5 +1,5 @@
 // Quill for Unity — a declarative, reactive UI framework.
-// Copyright (c) 2026 Leo CHAUMARTIN. All rights reserved.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
 //
 // Quill/Surface
 // Renders the entire UI in a single full-screen pass. Each Rectangle is composited as a rounded-box
@@ -91,9 +91,19 @@ Shader "Quill/Surface"
                     float2 p = px - center;
                     float d = sdRoundBox(p, half_, radius);
 
-                    // ~1px analytic edge using the screen-space gradient of the distance field.
-                    float aa = max(fwidth(d), 1e-4);
-                    float coverage = saturate(0.5 - d / aa);
+                    // `d` is a true signed distance in SCREEN PIXELS: px is built from _ScreenSize,
+                    // which QuillSurface fills with Screen.width/height, and the quad is authored in
+                    // clip space, so one fragment is exactly one pixel. |grad d| is therefore 1 by
+                    // construction and the 1px coverage ramp needs no derivative at all.
+                    //
+                    // This was fwidth(d), which was wrong twice over:
+                    //   1. fwidth is the Manhattan sum |ddx| + |ddy|, which overshoots the true
+                    //      gradient length by up to sqrt(2) on a 45-degree edge. Straight sides got
+                    //      a 1px AA band and corner arcs got up to 1.41px, so a thin border ring
+                    //      went soft and dim on the corners while the sides stayed crisp.
+                    //   2. HLSL leaves derivatives undefined after divergent control flow, and the
+                    //      per-pixel `continue` below diverges inside this loop.
+                    float coverage = saturate(0.5 - d);
                     if (coverage <= 0.0) continue;
 
                     float4 fill = rect.color;
@@ -107,7 +117,7 @@ Shader "Quill/Surface"
                         float2 innerHalf = max(half_ - border, 0.0);
                         float  innerRad  = max(radius - border, 0.0);
                         float  di = sdRoundBox(p, innerHalf, innerRad);
-                        innerCov = saturate(0.5 - di / max(fwidth(di), 1e-4));
+                        innerCov = saturate(0.5 - di);   // same 1px-per-fragment reasoning
                     }
 
                     float3 crgb = lerp(brd.rgb, fill.rgb, innerCov);

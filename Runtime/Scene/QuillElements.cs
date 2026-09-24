@@ -1,5 +1,5 @@
 // Quill for Unity — a declarative, reactive UI framework.
-// Copyright (c) 2026 Leo CHAUMARTIN. All rights reserved.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
 //
 using System;
 using System.Collections.Generic;
@@ -181,14 +181,14 @@ namespace Quill
     /// `ShaderEffect` — a quad drawn with a custom Unity shader (referenced by name via the
     /// <c>shader</c> property). Every other declared property is forwarded to the shader as a uniform
     /// of the same name (double→float, bool→float, color→color). Standard uniforms <c>_Rect</c>,
-    /// <c>_ScreenSize</c>, <c>_Time</c>, <c>_Opacity</c> are always provided.
+    /// <c>_ScreenSize</c>, <c>_Opacity</c> are always provided; use Unity's built-in <c>_Time</c> for time.
     /// </summary>
     public sealed class QuillShaderEffect : QuillItem
     {
         public override void SeedDefaults()
         {
             base.SeedDefaults();
-            Property("shader").SetValue("");   // Unity shader name, e.g. "Quill/Effect/Radial"
+            Property("shader").SetValue("");   // Unity shader name, e.g. "Quill/Effect/Blur"
         }
     }
 

@@ -23,8 +23,13 @@
       "displayName": "Demos",
       "description": "A widget gallery and a full game-menu hierarchy, with a bootstrap component.",
       "path": "Samples~/Demos"
+    },
+    {
+      "displayName": "Liquid Glass",
+      "description": "A ready-to-play scene: a control-centre UI built from Quill/Effect/LiquidGlass panes over an animated 3D backdrop, with reusable glass components.",
+      "path": "Samples~/LiquidGlass"
     }
   ],
-  "license": "LicenseRef-Proprietary",
+  "license": "MIT",
   "hideInEditor": false
 }

@@ -1,6 +1,6 @@
 # Quill — a declarative, reactive UI framework for Unity (URP)
 
-*Copyright (c) 2026 Leo CHAUMARTIN. All rights reserved. See `LICENSE.md`. Scope: `SCOPE.md`.*
+*Free and open source under the [MIT License](LICENSE.md). Scope and roadmap: [`SCOPE.md`](SCOPE.md).*
 
 Quill brings a clean declarative authoring model to Unity: real `.ui` text documents, a **reactive
 property + binding** engine, **anchors-based layout**, reusable **components**, and a low-level
@@ -20,6 +20,9 @@ renderer (no uGUI/Canvas) built around a single full-screen SDF pass plus lightw
 **The imported Demos** are `Gallery.ui` (a widget test bench exercising every element) and `GameMenu.ui`
 — a full **game menu hierarchy** (Main → Play/Settings/Credits/Quit, tabbed Settings, confirm dialog)
 built from the Controls and navigated with a single `screen` state property + `visible:` bindings.
+
+**The Liquid Glass sample** is a complete scene: import **Liquid Glass**, open `LiquidGlass.unity` and
+press **Play**. See [Liquid Glass sample](#the-liquid-glass-sample) below.
 
 ## Elements
 
@@ -177,24 +180,103 @@ share 4000–4002).
 
 ## Custom shaders — ShaderEffect
 
-`ShaderEffect` draws a quad with a custom Unity shader, the Quill analogue of Quill's `ShaderEffect`.
+`ShaderEffect` draws a quad with a custom Unity shader.
 Because Unity can't compile shader *source strings* at runtime, you reference a `.shader` **by name**;
 every custom Quill property on the effect is forwarded as a **uniform of the same name**:
 
 ```ui
 ShaderEffect {
     anchors.fill: parent
-    shader: "Quill/Effect/Radial"
-    glow: "#4fc3f7"                 // -> color uniform `glow`
-    intensity: 0.3 + 2.0 * slider.value   // -> float uniform `intensity`, fully reactive
+    shader: "Quill/Effect/Blur"
+    tint: "#4fc3f780"                    // -> color uniform `tint` (#RRGGBBAA)
+    radius: 4.0 + 24.0 * slider.value    // -> float uniform `radius`, fully reactive
 }
 ```
 
-The engine always supplies `_Rect` (x,y,w,h px), `_ScreenSize`, `_Time` (seconds), and `_Opacity`.
+The engine always supplies `_Rect` (x,y,w,h px), `_ScreenSize` and `_Opacity`. For animation, use
+Unity's built-in `_Time` (`_Time.y` is seconds since the level loaded).
 Forwarding rules: `real`→`float`, `bool`→`float`, `color`→`color`. Write your shader against the
 Quill convention (clip-space vertex with the `_ProjectionParams.x` Y-flip, `uv` 0..1 top-left) — see
-`Shaders/QuillEffectRadial.shader` and `QuillEffectPlasma.shader` as copy-paste templates. Effects render
-on the overlay layer (above rectangles, below text). The `GameMenu` sample uses a Plasma background.
+`Shaders/QuillEffectBlur.shader` as a copy-paste template. Effects render on the overlay layer (above
+rectangles, below text), so a `Rectangle` placed behind an effect is covered by it regardless of tree
+order — tint inside the shader instead. The `GameMenu` sample uses a blurred backdrop.
+
+> **Declare your uniforms.** List every forwarded uniform (plus `_Rect` and `_Opacity`) in the
+> shader's `Properties` block, and on URP put them in `CBUFFER_START(UnityPerMaterial)`. With bare
+> global uniforms the SRP Batcher ignores per-material values, so when several effects are on screen
+> they all draw with one effect's rect and properties (wrong shapes, missing tints).
+
+### The bundled effect — `Quill/Effect/Blur`
+
+A frosted backdrop blur, and the base layer to build glass-style panels on:
+
+| Property       | Type    | Meaning                                              | Unset (`0`) |
+|----------------|---------|------------------------------------------------------|-------------|
+| `radius`       | `real`  | blur radius in screen pixels                          | no blur     |
+| `cornerRadius` | `real`  | rounded-corner radius in pixels                       | square      |
+| `tint`         | `color` | colour laid over the blur, by its alpha               | untinted    |
+
+Every default is the "off" state, because unset Quill properties arrive at the shader as `0`.
+
+**What it blurs differs by pipeline**, and it is worth knowing which you are on:
+
+- **URP** samples `_CameraOpaqueTexture` — a copy of the opaque scene taken *before* transparents. It
+  holds the game world but no Quill UI, so the blur picks up the scene behind the surface and ignores
+  Quill rectangles under it. **Enable "Opaque Texture" on your URP asset**; with it off the texture is
+  black and the panel renders flat dark.
+- **Built-in** uses a `GrabPass`, which copies the live framebuffer at this queue. Quill rectangles
+  draw at queue 4000, before effects, so here the blur *does* pick up Quill panels behind it.
+
+Blurring an arbitrary Quill sub-tree identically on both pipelines needs `ShaderEffectSource`, which
+isn't implemented yet — see `SCOPE.md`.
+
+### `Quill/Effect/LiquidGlass`
+
+The whole effect rect becomes a rounded pane of glass: the backdrop is refracted toward the centre
+near the edges (a convex lens look), blurred, and lit with a thin rim highlight and a soft top-down
+sheen. It reads its backdrop exactly like `Quill/Effect/Blur`, so the same URP / Built-in notes apply.
+
+```ui
+ShaderEffect {
+    width: 420; height: 260
+    shader: "Quill/Effect/LiquidGlass"
+    cornerRadius: 32
+    refraction: 40
+    radius: 6
+}
+```
+
+| Property       | Type    | Meaning                                                   | Unset (`0`)          |
+|----------------|---------|-----------------------------------------------------------|----------------------|
+| `cornerRadius` | `real`  | rounded-corner radius in pixels                           | square               |
+| `refraction`   | `real`  | width in pixels of the lens band along the edge           | no refraction        |
+| `softness`     | `real`  | edge fade in pixels (never below 1 px)                    | crisp, antialiased   |
+| `radius`       | `real`  | blur radius in screen pixels                              | no blur              |
+| `tint`         | `color` | colour laid over the backdrop, by its alpha               | untinted             |
+
+The rim and sheen are always on — they are what makes it read as glass.
+
+### The Liquid Glass sample
+
+`Samples~/LiquidGlass` is a ready-to-play scene (`LiquidGlass.unity`): a lock-screen / control-centre
+layout, built entirely from LiquidGlass panes, floating over an animated 3D backdrop of drifting
+orbs and an aurora wallpaper. Everything is live: hover and press states ease in, the toggles and
+chips switch, the levels drag, the music player runs, and the brightness level, **Focus** and
+**Night Shift** change the 3D scene behind the glass through C#.
+
+- `Resources/QuillLiquidGlass/LiquidGlassShowcase.ui` — the document.
+- `Components/GlassPane.ui`, `GlassToggle.ui`, `GlassChip.ui`, `GlassLevel.ui` — reusable glass
+  building blocks; copy them into your own project.
+- `LiquidGlassShowcase.cs` — bootstrap + the app side (clock, player, scene wiring). On URP it turns
+  on the camera's **Opaque Texture** by itself (a per-camera override), so no URP-asset change is needed.
+- `QuillTweens.cs` — smooth transitions by convention: any element with both `foo` and `fooTarget`
+  has `foo` eased toward `fooTarget` every frame (numbers and colours). A stand-in until Quill has a
+  `Behavior` element.
+- `LiquidGlassBackdrop.cs` + two unlit shaders — the 3D backdrop; identical on URP and Built-in.
+
+Two layout rules the sample follows, and your glass UIs should too: **glass panes never overlap each
+other** (effects share one render queue, so their relative order is undefined), and **anything drawn
+on glass is `Text`** (rectangles render below effects).
 
 > In a build, add custom effect shaders to **Project Settings ▸ Graphics ▸ Always Included Shaders**
 > (or keep them under `Resources`) so `Shader.Find` can locate them; in the editor it just works.
@@ -326,3 +408,31 @@ anchor lines are bindings, and x/y/width/height are bindings derived from the de
 Property **aliases** + signal parameters (to round out the component system), `Behavior on` (implicit
 animation), states & transitions, `SequentialAnimation`/`ParallelAnimation`, `ColorAnimation`, the
 `mouse` event object, keyboard focus
+
+## Prior art
+
+Quill's authoring model — declarative object trees, reactive property bindings, anchor-based layout,
+components and signals — follows a design lineage that will be familiar to anyone who has written
+QML. Quill is an independent implementation written for Unity: it is not affiliated with or endorsed
+by any third-party UI toolkit, and no code is derived from one. It is likewise independent of uGUI
+and UI Toolkit.
+
+## Contributing
+
+Issues and pull requests are welcome at
+[github.com/lchaumartin/Quill](https://github.com/lchaumartin/Quill). Two things to keep in mind when
+working in this repo:
+
+- It is a Unity package, so `.meta` files are part of the source — commit them alongside the files
+  they describe, and never regenerate them by hand.
+- `SCOPE.md` is the reference for the feature surface. If a change moves something between
+  *Implemented*, *Not yet*, and *Out of scope*, update that file in the same commit, and add a
+  `CHANGELOG.md` entry.
+
+## License
+
+MIT © 2026 Leo CHAUMARTIN. See [`LICENSE.md`](LICENSE.md) for the full text.
+
+You are free to use Quill in commercial and closed-source projects, modify it, and redistribute it;
+the only requirement is that the copyright notice and permission notice travel with substantial
+portions of the software.

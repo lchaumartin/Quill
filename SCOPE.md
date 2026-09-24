@@ -1,4 +1,4 @@
-<!-- Copyright (c) 2026 Leo CHAUMARTIN. All rights reserved. -->
+<!-- Copyright (c) 2026 Leo CHAUMARTIN. MIT licensed — see LICENSE.md. -->
 
 # Quill — Scope
 

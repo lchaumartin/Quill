@@ -1,0 +1,198 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Quill — Liquid Glass showcase
+// A lock-screen / control-centre style layout built entirely from Quill/Effect/LiquidGlass panes
+// floating over a live 3D backdrop. Loaded by LiquidGlassShowcase.cs, which also feeds it the
+// clock, the music player, and turns the sliders and toggles into changes in the 3D scene.
+//
+// Layout rule for glass: panes never overlap each other, and anything drawn on glass is Text.
+// (Effects render above Rectangles and share one render queue — see the README.)
+
+Item {
+    id: root
+
+    // Fed from C# (LiquidGlassShowcase).
+    property string clock: "09:41"
+    property string date: "Thursday 24 September"
+
+    property bool celsius: true
+
+    // One-shot entrance: everything eases up and fades in.
+    property real intro: 0
+    NumberAnimation on intro { from: 0; to: 1; duration: 1200; easing.type: Easing.OutCubic }
+
+    // Music player state. C# advances `elapsed`, wraps `track`, and fills in the rest.
+    Item {
+        id: player
+        property bool playing: true
+        property real track: 0
+        property string title: ""
+        property string artist: ""
+        property real progress: 0
+        property string elapsedText: "0:00"
+        property string remainingText: "-0:00"
+    }
+
+    // ---- Chrome ---------------------------------------------------------------------------------
+    Text {
+        text: "QUILL  ·  LIQUID GLASS"
+        fontSize: 12
+        color: "#ffffff8c"
+        x: 32
+        y: 28
+        opacity: root.intro
+    }
+    Text {
+        text: "Drag the levels  ·  click the glass  ·  Esc hides the interface"
+        fontSize: 13
+        color: "#ffffff80"
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 26
+        opacity: root.intro
+    }
+
+    // ---- Stage ----------------------------------------------------------------------------------
+    Item {
+        id: stage
+        width: 1120
+        height: 600
+        anchors.centerIn: parent
+        anchors.verticalCenterOffset: 36 * (1 - root.intro)
+        opacity: root.intro
+
+        // ============================== Left: time + notifications ==============================
+        Text { text: root.date;  fontSize: 22;  color: "#ffffffd0"; x: 6; y: 52 }
+        Text { text: root.clock; fontSize: 132; color: "#ffffff";   x: 0; y: 76 }
+
+        GlassPane {
+            id: note
+            x: 0; y: 332; width: 460; height: 112
+            cornerRadius: 30
+            interactive: true
+            property real page: 0
+            onClicked: note.page = (note.page + 1) % 3
+
+            Text { text: "QUILL"; fontSize: 11; color: "#ffffff99"; x: 26; y: 20 }
+            Text {
+                text: note.page == 0 ? "now" : (note.page == 1 ? "2m ago" : "5m ago")
+                fontSize: 11; color: "#ffffff80"
+                anchors.right: parent.right; anchors.rightMargin: 26; y: 20
+            }
+            Text {
+                text: note.page == 0 ? "Liquid Glass is live" : (note.page == 1 ? "Everything here is declarative" : "Try the levels on the right")
+                fontSize: 19; color: "#ffffff"; x: 26; y: 42
+            }
+            Text {
+                text: note.page == 0 ? "Refraction, blur and a rim light in one ShaderEffect pass."
+                    : (note.page == 1 ? "One .ui document and four small glass components."
+                    : "Brightness and Night Shift drive the 3D scene from C#.")
+                fontSize: 14; color: "#ffffffb3"; x: 26; y: 72
+            }
+        }
+
+        GlassPane {
+            x: 0; y: 460; width: 460; height: 112
+            cornerRadius: 30
+            interactive: true
+
+            Text { text: "UP NEXT"; fontSize: 11; color: "#ffffff99"; x: 26; y: 20 }
+            Text { text: "in 25 min"; fontSize: 11; color: "#ffffff80"; anchors.right: parent.right; anchors.rightMargin: 26; y: 20 }
+            Text { text: "Design review"; fontSize: 19; color: "#ffffff"; x: 26; y: 42 }
+            Text { text: "14:30 – 15:15  ·  Studio 2"; fontSize: 14; color: "#ffffffb3"; x: 26; y: 72 }
+        }
+
+        // ============================== Right: control centre ===================================
+        // 96 px cells on a 112 px pitch (16 px gutters).
+        Item {
+            id: controls
+            x: 688; y: 28; width: 432; height: 544
+
+            // Connectivity bubbles (2 x 2).
+            GlassToggle { id: wifi;  x: 0;   y: 0;   glyph: "≈"; label: "Wi-Fi"; checked: true;  accent: "#3a86ffcc" }
+            GlassToggle { id: sound; x: 112; y: 0;   glyph: "♪"; label: "Sound"; checked: true;  accent: "#ff4f8bcc" }
+            GlassToggle { id: loved; x: 0;   y: 112; glyph: "♥"; label: "Loved"; checked: false; accent: "#ff3b5ccc" }
+            GlassToggle { id: home;  x: 112; y: 112; glyph: "⌂"; label: "Home";  checked: false; accent: "#27c26ccc" }
+
+            // Now playing.
+            GlassPane {
+                x: 224; y: 0; width: 208; height: 208
+                cornerRadius: 30
+
+                Text { text: "NOW PLAYING"; fontSize: 11; color: "#ffffff99"; x: 20; y: 20 }
+                Text { text: player.title;  fontSize: 19; color: "#ffffff";   x: 20; y: 42 }
+                Text { text: player.artist; fontSize: 13; color: "#ffffffb3"; x: 20; y: 68 }
+
+                // Progress as a row of dots, lit up to the play head.
+                Repeater {
+                    model: 21
+                    Text {
+                        text: "•"
+                        fontSize: 14
+                        x: 20 + index * 8.2
+                        y: 98
+                        color: index < player.progress * 21 ? "#ffffff" : "#ffffff47"
+                    }
+                }
+                Text { text: player.elapsedText;   fontSize: 11; color: "#ffffff99"; x: 20; y: 122 }
+                Text { text: player.remainingText; fontSize: 11; color: "#ffffff99"; anchors.right: parent.right; anchors.rightMargin: 20; y: 122 }
+
+                // Transport.
+                Item {
+                    x: 20; y: 150; width: 52; height: 40
+                    Text { text: "◄◄"; fontSize: prevArea.pressed ? 17 : 19; color: prevArea.containsMouse ? "#ffffff" : "#ffffffc0"; anchors.centerIn: parent }
+                    MouseArea { id: prevArea; anchors.fill: parent; onClicked: player.track = player.track - 1 }
+                }
+                Item {
+                    x: 78; y: 150; width: 52; height: 40
+                    Text { text: player.playing ? "II" : "►"; fontSize: playArea.pressed ? 21 : 24; color: playArea.containsMouse ? "#ffffff" : "#ffffffe0"; anchors.centerIn: parent }
+                    MouseArea { id: playArea; anchors.fill: parent; onClicked: player.playing = !player.playing }
+                }
+                Item {
+                    x: 136; y: 150; width: 52; height: 40
+                    Text { text: "►►"; fontSize: nextArea.pressed ? 17 : 19; color: nextArea.containsMouse ? "#ffffff" : "#ffffffc0"; anchors.centerIn: parent }
+                    MouseArea { id: nextArea; anchors.fill: parent; onClicked: player.track = player.track + 1 }
+                }
+            }
+
+            // Levels.
+            GlassLevel { id: brightness; x: 0;   y: 224; glyph: "☼"; value: 0.7 }
+            GlassLevel { id: volume;     x: 112; y: 224; glyph: "♫"; value: 0.55 }
+
+            // Weather — click to switch units.
+            GlassPane {
+                x: 224; y: 224; width: 208; height: 208
+                cornerRadius: 30
+                interactive: true
+                onClicked: root.celsius = !root.celsius
+
+                Text { text: "Dublin"; fontSize: 16; color: "#ffffff"; x: 20; y: 20 }
+                Text { text: root.celsius ? "18°" : "64°"; fontSize: 64; color: "#ffffff"; x: 16; y: 40 }
+                Text { text: "Partly Cloudy"; fontSize: 13; color: "#ffffffd0"; x: 20; y: 126 }
+                Text { text: root.celsius ? "H:21°  L:12°" : "H:70°  L:54°"; fontSize: 13; color: "#ffffff99"; x: 20; y: 148 }
+                Text { text: root.celsius ? "°C  ·  click for °F" : "°F  ·  click for °C"; fontSize: 10; color: "#ffffff66"; x: 20; y: 178 }
+            }
+
+            // Modes.
+            GlassChip {
+                id: focus
+                x: 0; y: 448
+                glyph: focus.checked ? "●" : "○"
+                title: "Focus"
+                detailOn: "Do Not Disturb"
+                detailOff: "Off"
+                accent: "#7b5cffcc"
+            }
+            GlassChip {
+                id: nightShift
+                x: 224; y: 448
+                glyph: "◊"
+                title: "Night Shift"
+                detailOn: "On until 07:00"
+                detailOff: "Off"
+                accent: "#ff9f43cc"
+            }
+        }
+    }
+}
