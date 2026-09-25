@@ -114,7 +114,7 @@ namespace Quill
         }
 
         /// <summary>
-        /// Register a reusable component type (one per .ui file). After this, the document can use
+        /// Register a reusable component type (one per .quill file). After this, the document can use
         /// <paramref name="typeName"/> like a built-in element (e.g. <c>Slider { value: 0.5 }</c>).
         /// Call before <see cref="LoadFromSource"/>.
         /// </summary>
@@ -141,7 +141,7 @@ namespace Quill
         /// Set the theme palette: a small document whose root declares the theme's properties
         /// (<c>QtObject { property color accent: "#3a86ff" … }</c>). Every document and component can
         /// read them through the global <c>Theme</c> — <c>color: Theme.accent</c> — and they stay
-        /// reactive, so palette properties may bind to each other. A file named <c>Theme.ui</c> passed to
+        /// reactive, so palette properties may bind to each other. A file named <c>Theme.quill</c> passed to
         /// <see cref="RegisterComponent"/> lands here, so registering a theme folder sets both its
         /// controls and its palette. Call before <see cref="LoadFromSource"/>.
         /// </summary>

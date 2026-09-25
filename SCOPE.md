@@ -2,7 +2,7 @@
 
 # Quill — Scope
 
-**Quill** is a declarative, reactive UI framework for Unity (URP). Interfaces are authored in `.ui`
+**Quill** is a declarative, reactive UI framework for Unity (URP). Interfaces are authored in `.quill`
 documents — a small declarative markup with reactive property bindings — and rendered at a low level
 (a single signed-distance-field pass for rectangles, plus lightweight textured layers for text,
 images, and custom shaders). It is independent of uGUI and UI Toolkit.
@@ -47,7 +47,7 @@ of scope. It is the reference for the asset's feature surface.
 - Positioners solve their layout in one binding and size to content reactively.
 
 **Components & reuse**
-- Every `.ui` file is a reusable type, instantiated by name with use-site property overrides,
+- Every `.quill` file is a reusable type, instantiated by name with use-site property overrides,
   handlers and extra children; a component's root may be another component.
 - Component-local `id` scopes (no collisions between instances).
 - `property alias`, signals with parameters, `function` declarations, `Component.onCompleted`,
@@ -79,8 +79,13 @@ of scope. It is the reference for the asset's feature surface.
 **Surface lifecycle**
 - Show/hide a surface (`Visible` / `Toggle`) for in-game menus.
 
+**Code editors**
+- A language server (diagnostics, completion, hover, go to definition, outline, folding) with
+  clients for VS Code, Rider (LSP4IJ) and Visual Studio; a shared TextMate grammar; `--check` for CI.
+- Unity opens `.quill` files in the external code editor and includes them in generated solutions.
+
 **Editor & samples**
-- `.ui` ScriptedImporter; the **Quill Document** component (document + theme in the inspector, a
+- `.quill` ScriptedImporter; the **Quill Document** component (document + theme in the inspector, a
   theme picker, **GameObject ▸ Quill ▸ Quill Document**); one sample per theme, each a single
   gallery scene.
 

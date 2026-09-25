@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Quill
 {
     /// <summary>
-    /// The no-code way to put a Quill UI on screen: assign a <c>.ui</c> document, pick a theme, press
+    /// The no-code way to put a Quill UI on screen: assign a <c>.quill</c> document, pick a theme, press
     /// Play. It creates the <see cref="QuillEngine"/>, registers the theme's controls (and any extra
     /// components), loads the document and hands it to a <see cref="QuillSurface"/> on the same
     /// GameObject (added if missing). With no document assigned it shows the theme gallery — every
@@ -20,13 +20,13 @@ namespace Quill
     [DisallowMultipleComponent]
     public sealed class QuillDocument : MonoBehaviour
     {
-        [Tooltip("The .ui document to show. Leave empty to show the theme gallery.")]
+        [Tooltip("The .quill document to show. Leave empty to show the theme gallery.")]
         public TextAsset Document;
 
         [Tooltip("Theme folder under Resources/QuillThemes. Slate ships with Quill; import more from the package's Samples.")]
         public string Theme = QuillThemes.Default;
 
-        [Tooltip("Extra reusable components (.ui files), registered by file name after the theme's — so a file named Button.ui replaces the theme's button.")]
+        [Tooltip("Extra reusable components (.quill files), registered by file name after the theme's — so a file named Button.quill replaces the theme's button.")]
         public TextAsset[] Components;
 
         [Tooltip("Start with the UI shown. Toggle it later with Surface.Visible (e.g. an in-game menu on Escape).")]

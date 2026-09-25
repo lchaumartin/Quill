@@ -29,7 +29,12 @@ namespace Quill.Parsing
         public bool Bool;
         public int Line;
 
-        public override string ToString() => $"{Type}:'{Text}'@{Line}";
+        /// <summary>Source position: offset of the first character, offset just past the last, and the
+        /// 0-based column of the first (editor tooling uses these; the engine doesn't need them).</summary>
+        public int Offset, End, Column;
+        internal bool Positioned;
+
+        public override string ToString() => $"{Type}:'{Text}'@{Line}:{Column}";
     }
 
     /// <summary>
@@ -60,19 +65,33 @@ namespace Quill.Parsing
         private char Cur => _pos < _src.Length ? _src[_pos] : '\0';
         private char Peek(int o = 1) => _pos + o < _src.Length ? _src[_pos + o] : '\0';
 
+        private int _lineStart;   // offset of the first character of the current line
+
         private Token Next()
         {
             SkipTrivia();
+            int start = _pos, line = _line, column = _pos - _lineStart;
+            Token t;
             if (_pos >= _src.Length)
-                return new Token { Type = TokenType.EOF, Line = _line };
-
-            char c = Cur;
-
-            if (char.IsLetter(c) || c == '_') return ReadIdentifier();
-            if (char.IsDigit(c) || (c == '.' && char.IsDigit(Peek()))) return ReadNumber();
-            if (c == '"' || c == '\'') return ReadString(c);
-
-            return ReadSymbol();
+                t = new Token { Type = TokenType.EOF, Line = _line };
+            else
+            {
+                char c = Cur;
+                if (char.IsLetter(c) || c == '_') t = ReadIdentifier();
+                else if (char.IsDigit(c) || (c == '.' && char.IsDigit(Peek()))) t = ReadNumber();
+                else if (c == '"' || c == '\'') t = ReadString(c);
+                else t = ReadSymbol();
+            }
+            // Readers that skip ahead (import lines, unknown characters) return an already-positioned token.
+            if (!t.Positioned)
+            {
+                t.Offset = start;
+                t.End = Math.Max(start, _pos);
+                t.Line = line;
+                t.Column = column;
+                t.Positioned = true;
+            }
+            return t;
         }
 
         private void SkipTrivia()
@@ -80,7 +99,7 @@ namespace Quill.Parsing
             while (_pos < _src.Length)
             {
                 char c = Cur;
-                if (c == '\n') { _line++; _pos++; }
+                if (c == '\n') { _line++; _pos++; _lineStart = _pos; }
                 else if (char.IsWhiteSpace(c)) { _pos++; }
                 else if (c == '/' && Peek() == '/')
                 {
@@ -91,7 +110,7 @@ namespace Quill.Parsing
                     _pos += 2;
                     while (_pos < _src.Length && !(Cur == '*' && Peek() == '/'))
                     {
-                        if (Cur == '\n') _line++;
+                        if (Cur == '\n') { _line++; _lineStart = _pos + 1; }
                         _pos++;
                     }
                     _pos += 2;
@@ -168,7 +187,7 @@ namespace Quill.Parsing
                 }
                 else
                 {
-                    if (Cur == '\n') _line++;
+                    if (Cur == '\n') { _line++; _lineStart = _pos + 1; }
                     sb.Append(Cur);
                     _pos++;
                 }

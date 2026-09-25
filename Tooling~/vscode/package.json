@@ -1,0 +1,67 @@
+{
+  "name": "quill",
+  "displayName": "Quill for Unity",
+  "description": "Language support for Quill (.quill) UI documents: highlighting, diagnostics, completion, hover docs, go to definition and outline — elements, theme controls, ids and the Theme palette.",
+  "version": "0.1.0",
+  "publisher": "leochaumartin",
+  "license": "MIT",
+  "author": { "name": "Leo CHAUMARTIN" },
+  "repository": { "type": "git", "url": "https://github.com/leochaumartin/quill" },
+  "engines": { "vscode": "^1.82.0" },
+  "categories": ["Programming Languages", "Linters"],
+  "keywords": ["quill", "unity", "ui", "qml", "declarative"],
+  "main": "./out/extension.js",
+  "activationEvents": ["workspaceContains:**/*.quill"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "quill",
+        "aliases": ["Quill", "quill"],
+        "extensions": [".quill"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      { "language": "quill", "scopeName": "source.quill", "path": "./syntaxes/quill.tmLanguage.json" }
+    ],
+    "configuration": {
+      "title": "Quill",
+      "properties": {
+        "quill.dotnetPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the dotnet executable (.NET 8 or later) that runs the Quill language server. Empty: found on PATH or in the usual install locations."
+        },
+        "quill.server.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Quill.LanguageServer.dll. Empty: the one bundled with the extension."
+        },
+        "quill.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Log the messages between VS Code and the Quill language server (Output ▸ Quill)."
+        }
+      }
+    },
+    "commands": [
+      { "command": "quill.restartServer", "title": "Quill: Restart Language Server" }
+    ]
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify",
+    "typecheck": "tsc --noEmit -p .",
+    "package": "vsce package --no-dependencies --out ../dist/"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "~1.82.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  }
+}

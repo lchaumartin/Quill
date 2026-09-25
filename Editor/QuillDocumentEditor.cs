@@ -9,7 +9,7 @@ namespace Quill.Editor
 {
     /// <summary>
     /// Inspector for <see cref="QuillDocument"/>: the theme is picked from the themes installed in the
-    /// project (every <c>Resources/QuillThemes/&lt;Name&gt;/Theme.ui</c>), and in Play mode changing it
+    /// project (every <c>Resources/QuillThemes/&lt;Name&gt;/Theme.quill</c>), and in Play mode changing it
     /// rebuilds the UI live.
     /// </summary>
     [CustomEditor(typeof(QuillDocument))]
@@ -29,7 +29,7 @@ namespace Quill.Editor
                     if (t is QuillDocument doc && doc.isActiveAndEnabled) doc.Load();
 
             if (((QuillDocument)target).Document == null)
-                EditorGUILayout.HelpBox("No document: the theme gallery is shown. Assign a .ui file to show your own UI.", MessageType.Info);
+                EditorGUILayout.HelpBox("No document: the theme gallery is shown. Assign a .quill file to show your own UI.", MessageType.Info);
         }
 
         private static void ThemePopup(SerializedProperty prop)
@@ -55,10 +55,10 @@ namespace Quill.Editor
             foreach (var guid in AssetDatabase.FindAssets(QuillEngine.ThemeName))
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
-                if (!path.EndsWith("/" + QuillEngine.ThemeName + ".ui")) continue;
+                if (!path.EndsWith("/" + QuillEngine.ThemeName + ".quill") && !path.EndsWith("/" + QuillEngine.ThemeName + ".ui")) continue;
                 int i = path.IndexOf(marker, System.StringComparison.Ordinal);
                 if (i < 0) continue;
-                string rest = path.Substring(i + marker.Length);          // "<Name>/Theme.ui"
+                string rest = path.Substring(i + marker.Length);          // "<Name>/Theme.quill"
                 int slash = rest.IndexOf('/');
                 if (slash <= 0) continue;
                 string name = rest.Substring(0, slash);

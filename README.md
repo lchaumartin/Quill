@@ -2,7 +2,7 @@
 
 *Free and open source under the [MIT License](LICENSE.md). Scope and roadmap: [`SCOPE.md`](SCOPE.md).*
 
-Quill brings a clean declarative authoring model to Unity: real `.ui` text documents, a **reactive
+Quill brings a clean declarative authoring model to Unity: real `.quill` text documents, a **reactive
 property + binding** engine, **anchors-based layout**, reusable **components**, and a low-level
 renderer (no uGUI/Canvas) built around a single full-screen SDF pass plus lightweight textured layers.
 
@@ -11,17 +11,26 @@ renderer (no uGUI/Canvas) built around a single full-screen SDF pass plus lightw
 1. Add Quill to your project (it runs on URP or the Built-in pipeline).
 2. In a scene with a camera, use **GameObject ▸ Quill ▸ Quill Document** and press **Play**. With no
    document assigned it shows the **theme gallery** — every control of the chosen theme.
-3. Assign your own `.ui` document to **Quill Document ▸ Document**, and pick a **Theme** in the same
+3. Assign your own `.quill` document to **Quill Document ▸ Document**, and pick a **Theme** in the same
    inspector. The document renders and animates itself, driven by bindings; resize the Game view and
    the anchored layout follows.
 
-`.ui` files import as text assets automatically and are syntax-checked on import.
+`.quill` files import as text assets automatically and are syntax-checked on import.
 
 **Themes.** Quill ships with **Slate**, a clean flat theme. Seven more come as samples — **Frost**,
 **Arcade**, **Tome**, **Vector**, **Pebble**, **Bitmap** and **Pop**: in **Package Manager ▸ Quill ▸
 Samples**, import one, open its `<Theme> Gallery.unity` and press **Play**. Every theme implements the
 same controls with the same properties, so switching theme never means editing a document — see
 [Themes](#themes).
+
+## Editor support
+
+`.quill` files are meant to be written by hand, so Quill ships a **language server** with clients
+for **VS Code**, **Rider** and **Visual Studio**: highlighting, diagnostics as you type (with "did you
+mean" suggestions), completion (elements, your components, properties, handlers, ids, the `Theme`
+palette, enums), hover docs, go to definition, outline and folding. In Unity, double-clicking a
+`.quill` file opens it in your external code editor, and `.quill` files are included in the
+generated solution. Setup per editor: [`Tooling~/README.md`](Tooling~/README.md).
 
 ## Elements
 
@@ -50,7 +59,7 @@ same controls with the same properties, so switching theme never means editing a
 Every item exposes six anchor lines in absolute coordinates — `left, right, top, bottom,
 horizontalCenter, verticalCenter` — so anchoring is just a binding onto another item's line:
 
-```ui
+```quill
 Rectangle {
     anchors.left: bar.right          // pin to a sibling's edge
     anchors.leftMargin: 20
@@ -70,7 +79,7 @@ affected items recompute.
 `Row`, `Column`, `Grid` and `Flow` lay out their children automatically and size themselves to their
 content — all through bindings, so layout reacts live to child sizes, visibility and spacing:
 
-```ui
+```quill
 Row {
     spacing: 8
     padding: 12                      // or leftPadding / rightPadding / topPadding / bottomPadding
@@ -94,7 +103,7 @@ or removed at runtime by a `Repeater` join the layout on their own. Positioners 
 its size, so anchors see the real extent. Give it a `width` (or anchor it) and it wraps, aligns and
 elides inside that box:
 
-```ui
+```quill
 Text {
     anchors.fill: parent; anchors.margins: 14
     text: "A paragraph that wraps.\nLine breaks work too."
@@ -120,7 +129,7 @@ Quill's animation model follows QML. An animation runs on its own as a **value s
 (`NumberAnimation on x`, running by default), as a **standalone** element (`running: true` or
 `start()`), inside a `Behavior`, or as part of a `Transition`.
 
-```ui
+```quill
 NumberAnimation on phase {
     from: 0; to: 1
     duration: 1500
@@ -136,7 +145,7 @@ same at any frame rate; `SmoothedAnimation` (`velocity`, `duration`) eases towar
 `PauseAnimation` waits; `ScriptAction { script: ... }` runs statements; `PropertyAction` sets a value
 instantly. `SequentialAnimation` and `ParallelAnimation` group any of them, nested freely:
 
-```ui
+```quill
 SequentialAnimation {
     id: intro
     loops: Animation.Infinite
@@ -161,7 +170,7 @@ for `running: true` or `start()`, as in QML.
 **Behavior** animates every change of a property — from a binding, an assignment, a state change or
 C# `SetValue`:
 
-```ui
+```quill
 Rectangle {
     x: area.containsMouse ? 200 : 0
     color: active ? "#3a86ff" : "#243044"
@@ -178,7 +187,7 @@ Behaviors don't animate a document's initial values. `enabled: false` turns one 
 Any item can declare named `states`, each a set of `PropertyChanges`, and `transitions` that animate
 between them. Set `state` to switch, or give a State a `when` condition:
 
-```ui
+```quill
 Rectangle {
     id: panel
     x: 0; width: 120; color: "#3a86ff"
@@ -208,7 +217,7 @@ tells you when it's in flight.
 
 ## Timer
 
-```ui
+```quill
 Timer { interval: 1000; running: true; repeat: true; onTriggered: seconds++ }
 ```
 
@@ -223,7 +232,7 @@ when it changes, instances are added or removed (list entries that remain just g
 Each instance gets `index`, plus `modelData` for list models, and has its **own id scope**, so an
 `id` inside the delegate names that instance's item:
 
-```ui
+```quill
 Flow {
     width: 360; spacing: 8
     Repeater {
@@ -311,7 +320,7 @@ use 4000–4100).
 Because Unity can't compile shader *source strings* at runtime, you reference a `.shader` **by name**;
 every custom Quill property on the effect is forwarded as a **uniform of the same name**:
 
-```ui
+```quill
 ShaderEffect {
     anchors.fill: parent
     shader: "Quill/Effect/Blur"
@@ -363,7 +372,7 @@ The whole effect rect becomes a rounded pane of glass: the backdrop is refracted
 near the edges (a convex lens look), blurred, and lit with a thin rim highlight and a soft top-down
 sheen. It reads its backdrop exactly like `Quill/Effect/Blur`, so the same URP / Built-in notes apply.
 
-```ui
+```quill
 ShaderEffect {
     width: 420; height: 260
     shader: "Quill/Effect/Glass"
@@ -400,8 +409,8 @@ backdrop, and on URP turns on the camera's Opaque Texture for you).
 
 ## Themes
 
-A theme is a folder of `.ui` files under `Resources/QuillThemes/<Name>`: one file per control, plus
-`Theme.ui`, the **palette**. Pick one on the **Quill Document** (the inspector lists the themes in the
+A theme is a folder of `.quill` files under `Resources/QuillThemes/<Name>`: one file per control, plus
+`Theme.quill`, the **palette**. Pick one on the **Quill Document** (the inspector lists the themes in the
 project), or from C#:
 
 ```csharp
@@ -425,7 +434,7 @@ written against one works with all of them:
 | `TabBar`      | `model` (list of strings), `currentIndex`, `enabled`; `signal activated(int index)`      |
 | `ColorPicker` | `color`, `showAlpha`; `signal moved(color color)` — shared, drawn with the theme's palette |
 
-```ui
+```quill
 Panel {
     width: 340; height: content.height + 2 * Theme.padding
     Column {
@@ -460,21 +469,21 @@ every control at once (the gallery's Accent panel does exactly that).
 | **Pop**    | thick ink, hard offset shadows, Bangers headlines             | party, puzzle, comic-style games       |
 
 Each sample has one scene, `<Theme> Gallery.unity`: a Quill Document showing the gallery
-(`Resources/QuillThemes/Gallery.ui` in the package) with that theme. The themes' fonts are free (SIL
+(`Resources/QuillThemes/Gallery.quill` in the package) with that theme. The themes' fonts are free (SIL
 Open Font License; the licences are in each sample's `Licenses` folder, outside `Resources`).
 
 **Making your own theme:** copy a theme folder to `Resources/QuillThemes/MyTheme` in your project,
-rename it, edit `Theme.ui` for the palette and restyle the controls you want. Anything you leave out
-falls back to Slate's version, drawn with your palette — a theme can be just a `Theme.ui`. Keep each
+rename it, edit `Theme.quill` for the palette and restyle the controls you want. Anything you leave out
+falls back to Slate's version, drawn with your palette — a theme can be just a `Theme.quill`. Keep each
 control's properties and signals as listed above, and documents stay interchangeable.
 
 ## Reusable components
 
-Any `.ui` file can become a **reusable type**, instantiated by name like a built-in element. The
+Any `.quill` file can become a **reusable type**, instantiated by name like a built-in element. The
 theme's controls are components too — a Quill Document registers them automatically — so a document
 can just write:
 
-```ui
+```quill
 Button { width: 200; text: "Run"; onClicked: runs = runs + 1 }
 Slider { id: vol; width: 320; value: 0.4 }
 Label  { text: "volume " + vol.value.toFixed(2) }    // read a control's state by id
@@ -483,7 +492,7 @@ ProgressBar { value: load }
 ColorPicker { id: picker; color: "#3a86ff"; onMoved: swatch.color = color }
 ```
 
-**Authoring a component** (see `Resources/QuillThemes/Slate/Slider.ui`):
+**Authoring a component** (see `Resources/QuillThemes/Slate/Slider.quill`):
 
 - The component's **root-declared properties are its public API** — set them at the use-site, read
   them by id. `property real value: 0.4` on the Slider root *is* its value.
@@ -503,8 +512,8 @@ ColorPicker { id: picker; color: "#3a86ff"; onMoved: swatch.color = color }
   **handlers run alongside** the component's own, and use-site **children** are appended to the root.
 - A component's root may itself be another component — it extends it.
 
-Register your own from C# (`QuillEngine.RegisterComponent("MyWidget", uiText)`), or list the `.ui`
-files in the Quill Document's **Components** (they're registered after the theme's, so a `Button.ui`
+Register your own from C# (`QuillEngine.RegisterComponent("MyWidget", uiText)`), or list the `.quill`
+files in the Quill Document's **Components** (they're registered after the theme's, so a `Button.quill`
 there replaces the theme's button).
 
 ## Input — MouseArea
@@ -513,7 +522,7 @@ there replaces the theme's button).
 `mouseX` / `mouseY` (area-local) state you bind visuals to, and fires signals you handle with
 statements:
 
-```ui
+```quill
 Rectangle {
     id: button
     property int count: 0
@@ -540,7 +549,7 @@ in tree order); `enabled: false` opts out; wheel events go to the topmost area t
 
 **Dragging** is declarative:
 
-```ui
+```quill
 Rectangle {
     id: knob
     width: 38; height: 38; radius: 19
@@ -601,7 +610,7 @@ Custom properties: `property real phase: 0` (also `int`, `bool`, `string`, `colo
 
 Signal handlers, `function` bodies and `ScriptAction` scripts are statements:
 
-```ui
+```quill
 onClicked: {
     count++                              // also += -= *= /= and --
     var next = (index + 1) % items.length
@@ -621,7 +630,7 @@ of that name in scope. Loops are capped at 100 000 iterations and recursion at 6
 ## Architecture
 
 ```
-.ui text
+.quill text
   └─ Parsing/      Lexer → Parser → AST (objects, expressions, statements, functions)
         └─ QuillEngine   instantiate → aliases → anchor lines → bindings → positioners → anchors →
               │           text sizing → handlers → repeaters → behaviors / states / animations →

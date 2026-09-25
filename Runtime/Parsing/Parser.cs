@@ -8,7 +8,18 @@ namespace Quill.Parsing
 {
     public sealed class QuillParseException : Exception
     {
+        /// <summary>Where the error was found (the offending token), for editor tooling; -1 if unknown.</summary>
+        public int Offset = -1, End = -1, Line, Column;
+
         public QuillParseException(string message) : base(message) { }
+
+        internal QuillParseException(string message, Token at) : base(message)
+        {
+            Offset = at.Offset;
+            End = Math.Max(at.End, at.Offset + 1);
+            Line = at.Line;
+            Column = at.Column;
+        }
     }
 
     /// <summary>
@@ -45,6 +56,8 @@ namespace Quill.Parsing
         }
 
         private Token Cur => _tokens[_i];
+        private int PrevEnd => _i > 0 ? _tokens[_i - 1].End : 0;
+        private static string Describe(Token t) => t.Type == TokenType.EOF ? "end of file" : t.Text;
         private Token PeekTok(int o = 1) => _tokens[Math.Min(_i + o, _tokens.Count - 1)];
         private Token Advance() => _tokens[_i++];
         private bool Check(TokenType t) => Cur.Type == t;
@@ -53,7 +66,7 @@ namespace Quill.Parsing
         private Token Expect(TokenType t, string what)
         {
             if (Cur.Type != t)
-                throw new QuillParseException($"Expected {what} but found '{Cur.Text}' (line {Cur.Line})");
+                throw new QuillParseException($"Expected {what} but found '{Describe(Cur)}' (line {Cur.Line})", Cur);
             return Advance();
         }
 
@@ -61,7 +74,7 @@ namespace Quill.Parsing
         {
             var root = ParseObject();
             if (!Check(TokenType.EOF))
-                throw new QuillParseException($"Unexpected trailing '{Cur.Text}' (line {Cur.Line})");
+                throw new QuillParseException($"Unexpected trailing '{Describe(Cur)}' (line {Cur.Line})", Cur);
             return root;
         }
 
@@ -79,7 +92,7 @@ namespace Quill.Parsing
         private ObjectNode ParseObject()
         {
             var typeTok = Expect(TokenType.Identifier, "type name");
-            var node = new ObjectNode { TypeName = typeTok.Text, Line = typeTok.Line };
+            var node = new ObjectNode { TypeName = typeTok.Text, Line = typeTok.Line, TypeOffset = typeTok.Offset };
 
             // Optional `on <property>` (e.g. `NumberAnimation on phase { ... }`, `Behavior on border.color`).
             if (CheckWord("on"))
@@ -88,12 +101,12 @@ namespace Quill.Parsing
                 node.OnProperty = ParseDotted("property after 'on'");
             }
 
-            Expect(TokenType.LBrace, "'{'");
+            node.BodyStart = Expect(TokenType.LBrace, "'{'").Offset;
 
             while (!Check(TokenType.RBrace) && !Check(TokenType.EOF))
                 ParseMember(node);
 
-            Expect(TokenType.RBrace, "'}'");
+            node.BodyEnd = Expect(TokenType.RBrace, "'}'").Offset;
             return node;
         }
 
@@ -116,6 +129,7 @@ namespace Quill.Parsing
                 Advance();
                 var sig = Expect(TokenType.Identifier, "signal name");
                 owner.Signals.Add(sig.Text);
+                owner.SignalDecls.Add((sig.Text, sig.Offset, sig.End));
                 var names = new List<string>();
                 if (Check(TokenType.LParen))
                 {
@@ -140,12 +154,12 @@ namespace Quill.Parsing
             {
                 Advance();
                 var fname = Expect(TokenType.Identifier, "function name");
-                owner.Functions.Add(new FunctionDecl
-                {
-                    Name = fname.Text,
-                    Params = ParseParamList(),
-                    Body = ParseBlockBody()
-                });
+                var fn = new FunctionDecl { Name = fname.Text, Line = fname.Line, NameOffset = fname.Offset, NameEnd = fname.End };
+                fn.Params = ParseParamList();
+                fn.BodyStart = Cur.Offset;
+                fn.Body = ParseBlockBody();
+                fn.BodyEnd = PrevEnd;
+                owner.Functions.Add(fn);
                 return;
             }
 
@@ -167,18 +181,23 @@ namespace Quill.Parsing
                     Name = name.Text,
                     IsDeclaration = true,
                     DeclaredType = typeName,
-                    Line = name.Line
+                    Line = name.Line,
+                    NameOffset = name.Offset,
+                    NameEnd = name.End
                 };
                 if (Check(TokenType.Colon))
                 {
                     Advance();
+                    pn.ValueStart = Cur.Offset;
                     if (AtObjectStart() || (Check(TokenType.LBracket) && ObjectListAhead()))
                     {
                         ParseObjectValue(owner, pn.Name);
+                        pn.ValueEnd = PrevEnd;
                         owner.Properties.Add(pn);
                         return;
                     }
                     pn.Value = ParseExpression();
+                    pn.ValueEnd = PrevEnd;
                 }
                 ConsumeOptionalSemicolon();
                 owner.Properties.Add(pn);
@@ -196,12 +215,14 @@ namespace Quill.Parsing
             var ident = Cur;
             string memberName = ParseDotted("member name");
             if (!Check(TokenType.Colon))
-                throw new QuillParseException($"Unexpected '{Cur.Text}' after '{memberName}' (line {Cur.Line})");
+                throw new QuillParseException($"Unexpected '{Describe(Cur)}' after '{memberName}' (line {Cur.Line})", Cur);
             Advance(); // ':'
 
             if (memberName == "id")
             {
-                owner.Id = Expect(TokenType.Identifier, "id value").Text;
+                var idTok = Expect(TokenType.Identifier, "id value");
+                owner.Id = idTok.Text;
+                owner.IdOffset = idTok.Offset;
                 ConsumeOptionalSemicolon();
                 return;
             }
@@ -209,14 +230,14 @@ namespace Quill.Parsing
             // Signal handler: `onClicked: stmt`, `onClicked: { ... }`, `Component.onCompleted: ...`,
             // and ScriptAction's `script:`.
             string last = memberName.Substring(memberName.LastIndexOf('.') + 1);
+            int nameEnd = _tokens[_i - 2].End;   // just before the ':'
+            int valueStart = Cur.Offset;
             if (IsHandlerName(last) || (owner.TypeName == "ScriptAction" && memberName == "script"))
             {
-                owner.Properties.Add(new PropertyNode
-                {
-                    Name = memberName,
-                    Handler = ParseHandler(),
-                    Line = ident.Line
-                });
+                var handler = new PropertyNode { Name = memberName, Line = ident.Line, NameOffset = ident.Offset, NameEnd = nameEnd, ValueStart = valueStart };
+                handler.Handler = ParseHandler();
+                handler.ValueEnd = PrevEnd;
+                owner.Properties.Add(handler);
                 return;
             }
 
@@ -227,7 +248,9 @@ namespace Quill.Parsing
                 return;
             }
 
-            var pnode = new PropertyNode { Name = memberName, Value = ParseExpression(), Line = ident.Line };
+            var pnode = new PropertyNode { Name = memberName, Line = ident.Line, NameOffset = ident.Offset, NameEnd = nameEnd, ValueStart = valueStart };
+            pnode.Value = ParseExpression();
+            pnode.ValueEnd = PrevEnd;
             ConsumeOptionalSemicolon();
             owner.Properties.Add(pnode);
         }
@@ -417,7 +440,7 @@ namespace Quill.Parsing
         private ExprNode CheckLValue(ExprNode e)
         {
             if (e is IdentifierNode || e is MemberNode || e is IndexNode) return e;
-            throw new QuillParseException($"Invalid assignment target (line {Cur.Line})");
+            throw new QuillParseException($"Invalid assignment target (line {Cur.Line})", Cur);
         }
 
         // ---- Expression parsing (precedence climbing) ------------------------------------------
@@ -518,7 +541,7 @@ namespace Quill.Parsing
 
                     if (expr is IdentifierNode id) expr = new CallNode { Target = null, Name = id.Name, Args = args };
                     else if (expr is MemberNode m) expr = new CallNode { Target = m.Target, Name = m.Member, Args = args };
-                    else throw new QuillParseException($"Call target must be a name (line {Cur.Line})");
+                    else throw new QuillParseException($"Call target must be a name (line {Cur.Line})", Cur);
                 }
                 else break;
             }
@@ -559,7 +582,7 @@ namespace Quill.Parsing
                     return arr;
                 }
                 default:
-                    throw new QuillParseException($"Unexpected '{Cur.Text}' in expression (line {Cur.Line})");
+                    throw new QuillParseException($"Unexpected '{Describe(Cur)}' in expression (line {Cur.Line})", Cur);
             }
         }
     }

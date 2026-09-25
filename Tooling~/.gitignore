@@ -1,0 +1,7 @@
+LanguageServer/bin/
+LanguageServer/obj/
+vscode/node_modules/
+vscode/out/
+vscode/server/
+visualstudio/bin/
+visualstudio/obj/

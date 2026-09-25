@@ -374,6 +374,9 @@ namespace Quill
 
         public static bool IsKnown(string typeName) => _factories.ContainsKey(typeName);
 
+        /// <summary>Every registered element type name (editor tooling lists them).</summary>
+        public static IEnumerable<string> Names => _factories.Keys;
+
         public static QuillItem Create(string typeName)
         {
             if (!_factories.TryGetValue(typeName, out var f))

@@ -1,0 +1,3 @@
+; Registers the folder with the Quill TextMate grammar (highlighting for .quill files).
+[$RootKey$\TextMate\Repositories]
+"Quill"="$PackageFolder$\Grammars"

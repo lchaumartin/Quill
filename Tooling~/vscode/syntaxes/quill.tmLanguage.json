@@ -1,0 +1,302 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Quill",
+  "scopeName": "source.quill",
+  "fileTypes": [
+    "quill"
+  ],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#import"
+    },
+    {
+      "include": "#object"
+    },
+    {
+      "include": "#members"
+    },
+    {
+      "include": "#expression"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.quill",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "captures": {
+            "0": {
+              "name": "punctuation.definition.comment.quill"
+            }
+          }
+        },
+        {
+          "name": "comment.line.double-slash.quill",
+          "begin": "//",
+          "end": "$",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.quill"
+            }
+          }
+        }
+      ]
+    },
+    "import": {
+      "match": "^\\s*(import)\\b.*$",
+      "captures": {
+        "1": {
+          "name": "keyword.control.import.quill"
+        }
+      }
+    },
+    "object": {
+      "patterns": [
+        {
+          "match": "\\b(Item|QtObject|Rectangle|Text|Image|Row|Column|Grid|Flow|MouseArea|ShaderEffect|Timer|Behavior|State|PropertyChanges|Transition|Repeater|NumberAnimation|PropertyAnimation|ColorAnimation|SpringAnimation|SmoothedAnimation|PauseAnimation|SequentialAnimation|ParallelAnimation|ScriptAction|PropertyAction)\\s+(on)\\s+([A-Za-z_][\\w.]*)\\s*(?=\\{)",
+          "captures": {
+            "1": {
+              "name": "support.class.quill"
+            },
+            "2": {
+              "name": "keyword.other.on.quill"
+            },
+            "3": {
+              "name": "variable.other.property.quill"
+            }
+          }
+        },
+        {
+          "match": "\\b([A-Z]\\w*)\\s+(on)\\s+([A-Za-z_][\\w.]*)\\s*(?=\\{)",
+          "captures": {
+            "1": {
+              "name": "entity.name.type.quill"
+            },
+            "2": {
+              "name": "keyword.other.on.quill"
+            },
+            "3": {
+              "name": "variable.other.property.quill"
+            }
+          }
+        },
+        {
+          "match": "\\b(Item|QtObject|Rectangle|Text|Image|Row|Column|Grid|Flow|MouseArea|ShaderEffect|Timer|Behavior|State|PropertyChanges|Transition|Repeater|NumberAnimation|PropertyAnimation|ColorAnimation|SpringAnimation|SmoothedAnimation|PauseAnimation|SequentialAnimation|ParallelAnimation|ScriptAction|PropertyAction)\\s*(?=\\{)",
+          "captures": {
+            "1": {
+              "name": "support.class.quill"
+            }
+          }
+        },
+        {
+          "match": "\\b([A-Z]\\w*)\\s*(?=\\{)",
+          "captures": {
+            "1": {
+              "name": "entity.name.type.quill"
+            }
+          }
+        }
+      ]
+    },
+    "members": {
+      "patterns": [
+        {
+          "match": "\\b(readonly|default|required)?\\s*\\b(property)\\s+(\\w+)(?:\\s*<\\s*\\w+\\s*>)?\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.quill"
+            },
+            "2": {
+              "name": "keyword.other.property.quill"
+            },
+            "3": {
+              "name": "storage.type.quill"
+            },
+            "4": {
+              "name": "variable.other.property.declaration.quill"
+            }
+          }
+        },
+        {
+          "match": "\\b(signal)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": {
+              "name": "keyword.other.signal.quill"
+            },
+            "2": {
+              "name": "entity.name.function.signal.quill"
+            }
+          }
+        },
+        {
+          "match": "\\b(function)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.function.quill"
+            },
+            "2": {
+              "name": "entity.name.function.quill"
+            }
+          }
+        },
+        {
+          "match": "(?<=^|[{;])\\s*\\b(id)\\s*(:)\\s*([A-Za-z_]\\w*)",
+          "captures": {
+            "1": {
+              "name": "keyword.other.id.quill"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.quill"
+            },
+            "3": {
+              "name": "variable.other.constant.id.quill"
+            }
+          }
+        },
+        {
+          "match": "(?<=^|[{;])\\s*((?:[A-Za-z_]\\w*\\.)*on[A-Z]\\w*)\\s*(:)",
+          "captures": {
+            "1": {
+              "name": "entity.name.function.handler.quill"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.quill"
+            }
+          }
+        },
+        {
+          "match": "(?<=^|[{;])\\s*([a-z_]\\w*(?:\\.[A-Za-z_]\\w*)*)\\s*(:)(?!:)",
+          "captures": {
+            "1": {
+              "name": "entity.other.attribute-name.quill"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.quill"
+            }
+          }
+        }
+      ]
+    },
+    "expression": {
+      "patterns": [
+        {
+          "include": "#comments"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "name": "constant.numeric.hex.quill",
+          "match": "\\b0[xX][0-9a-fA-F]+\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.quill",
+          "match": "(?<![\\w.])(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?\\b"
+        },
+        {
+          "name": "constant.language.quill",
+          "match": "\\b(true|false|null|undefined|NaN|Infinity)\\b"
+        },
+        {
+          "name": "keyword.control.quill",
+          "match": "\\b(if|else|for|while|return|break|continue|var|let|const|in|of|typeof|new)\\b"
+        },
+        {
+          "name": "variable.language.quill",
+          "match": "\\b(parent|index|modelData)\\b"
+        },
+        {
+          "match": "\\b(Theme|Qt|Math|Easing|Text|Font|Drag|Animation|console)\\s*(\\.)\\s*([A-Za-z_]\\w*)",
+          "captures": {
+            "1": {
+              "name": "support.class.builtin.quill"
+            },
+            "2": {
+              "name": "punctuation.accessor.quill"
+            },
+            "3": {
+              "name": "support.constant.quill"
+            }
+          }
+        },
+        {
+          "name": "support.function.quill",
+          "match": "\\b(parseInt|parseFloat|Number|String|Boolean|isNaN|isFinite|qsTr)\\b(?=\\s*\\()"
+        },
+        {
+          "match": "(\\.)\\s*([A-Za-z_]\\w*)\\s*(?=\\()",
+          "captures": {
+            "1": {
+              "name": "punctuation.accessor.quill"
+            },
+            "2": {
+              "name": "entity.name.function.call.quill"
+            }
+          }
+        },
+        {
+          "match": "\\b([A-Za-z_]\\w*)\\s*(?=\\()",
+          "captures": {
+            "1": {
+              "name": "entity.name.function.call.quill"
+            }
+          }
+        },
+        {
+          "match": "(\\.)\\s*([A-Za-z_]\\w*)",
+          "captures": {
+            "1": {
+              "name": "punctuation.accessor.quill"
+            },
+            "2": {
+              "name": "variable.other.property.quill"
+            }
+          }
+        },
+        {
+          "name": "keyword.operator.quill",
+          "match": "===|!==|==|!=|<=|>=|&&|\\|\\||\\+\\+|--|[-+*/%<>!?]=?|="
+        },
+        {
+          "name": "variable.other.quill",
+          "match": "\\b[A-Za-z_]\\w*\\b"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.quill",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.other.color.quill",
+              "match": "(?<=\\\")#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})(?=\\\")"
+            },
+            {
+              "name": "constant.character.escape.quill",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.quill",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.quill",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

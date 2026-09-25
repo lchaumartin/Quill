@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Quill language server (LSP over stdio) for .quill documents. It compiles the engine's own parser
+    and element registry (../../Runtime) against a tiny UnityEngine stand-in, so the editor sees the
+    same grammar and elements as the runtime. No NuGet dependencies.
+    Build:  dotnet publish -c Release -o ../dist/server
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <UseAppHost>false</UseAppHost>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>Quill.LanguageServer</AssemblyName>
+    <RootNamespace>Quill.LanguageServer</RootNamespace>
+    <Version>0.1.0</Version>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS8632;CS0414;CS0649;CS0169;CS0162</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="src/**/*.cs" />
+    <Compile Include="../../Runtime/Core/*.cs" LinkBase="Engine/Core" />
+    <Compile Include="../../Runtime/Parsing/*.cs" LinkBase="Engine/Parsing" />
+    <Compile Include="../../Runtime/Scene/*.cs" LinkBase="Engine/Scene" />
+  </ItemGroup>
+</Project>

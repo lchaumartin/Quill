@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Visual Studio 2022+ extension for .quill files: TextMate highlighting (the VS Code grammar) and the
+    Quill language server through Visual Studio's LSP client. Build on Windows with the "Visual Studio
+    extension development" workload, after building the server (../build.sh or dotnet publish):
+      msbuild /restore Quill.VisualStudio.csproj /p:Configuration=Release
+    Output: bin/Release/Quill.VisualStudio.vsix
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <RootNamespace>Quill.VisualStudio</RootNamespace>
+    <AssemblyName>Quill.VisualStudio</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <GeneratePkgDefFile>false</GeneratePkgDefFile>
+    <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
+    <IncludeDebugSymbolsInVSIXContainer>false</IncludeDebugSymbolsInVSIXContainer>
+    <IncludeDebugSymbolsInLocalVSIXDeployment>false</IncludeDebugSymbolsInLocalVSIXDeployment>
+    <CopyBuildOutputToOutputDirectory>true</CopyBuildOutputToOutputDirectory>
+    <CopyOutputSymbolsToOutputDirectory>false</CopyOutputSymbolsToOutputDirectory>
+    <DeployExtension>false</DeployExtension>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.*" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.LanguageServer.Client" Version="17.*" />
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.*" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="source.extension.vsixmanifest" SubType="Designer" />
+    <Content Include="Quill.pkgdef" IncludeInVSIX="true" />
+    <Content Include="..\..\LICENSE.md" Link="LICENSE.md" IncludeInVSIX="true" />
+    <!-- Highlighting: the same TextMate grammar as VS Code. -->
+    <Content Include="..\vscode\syntaxes\quill.tmLanguage.json" Link="Grammars\quill.tmLanguage.json" IncludeInVSIX="true" />
+    <Content Include="..\vscode\language-configuration.json" Link="Grammars\language-configuration.json" IncludeInVSIX="true" />
+    <!-- The language server (built into ../dist/server). -->
+    <Content Include="..\dist\server\Quill.LanguageServer.dll" Link="server\Quill.LanguageServer.dll" IncludeInVSIX="true" />
+    <Content Include="..\dist\server\Quill.LanguageServer.deps.json" Link="server\Quill.LanguageServer.deps.json" IncludeInVSIX="true" />
+    <Content Include="..\dist\server\Quill.LanguageServer.runtimeconfig.json" Link="server\Quill.LanguageServer.runtimeconfig.json" IncludeInVSIX="true" />
+  </ItemGroup>
+</Project>

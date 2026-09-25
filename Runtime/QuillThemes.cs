@@ -6,8 +6,8 @@ using UnityEngine;
 namespace Quill
 {
     /// <summary>
-    /// Themes are folders of <c>.ui</c> files under <c>Resources/QuillThemes/&lt;Name&gt;</c>: one file per
-    /// control (<c>Button.ui</c>, <c>Slider.ui</c>…) plus <c>Theme.ui</c>, the palette documents read as
+    /// Themes are folders of <c>.quill</c> files under <c>Resources/QuillThemes/&lt;Name&gt;</c>: one file per
+    /// control (<c>Button.quill</c>, <c>Slider.quill</c>…) plus <c>Theme.quill</c>, the palette documents read as
     /// <c>Theme.accent</c>, <c>Theme.radius</c>… Every theme implements the same controls with the
     /// same properties and signals, so switching theme never means editing a document.
     ///

@@ -8,13 +8,21 @@ All notable changes to **Quill** are documented here. This project adheres to
 ## [Unreleased]
 
 ### Added
+- **Editor tooling** (`Tooling~/`): a language server for `.quill` files — diagnostics as you type
+  (syntax, unknown elements / properties / handlers / names / members, with suggestions),
+  completion, hover docs, go to definition, outline and folding — with clients for **VS Code**
+  (`.vsix`), **Rider** (TextMate + LSP4IJ) and **Visual Studio** (VSIX project + CI workflow), a shared
+  TextMate grammar, and `--check` for CI.
+- Unity: double-clicking a `.quill` file (or its Console message) opens it in the external code
+  editor; `quill` is added to the generated projects' extensions.
+- Parser tokens and AST nodes carry source positions; parse errors carry line and column.
 - **`Quill/Effect/Blur`** — a frosted backdrop-blur `ShaderEffect` with `radius`, `cornerRadius` and
   `tint`, as a dual-SubShader: `_CameraOpaqueTexture` on URP, `GrabPass` on Built-in.
 - **`Quill/Effect/Glass`** — a rounded glass pane that refracts, blurs and rim-lights the
   backdrop (`cornerRadius`, `refraction`, `softness`, `radius`, `tint`); same dual-SubShader backdrop
   sources as `Quill/Effect/Blur`. `softness` is the width of a rounded, lit, refracting bevel along a
   crisp silhouette (0 = sharp flat edge) rather than an alpha fade.
-- **Themes.** A theme is a folder under `Resources/QuillThemes/<Name>`: the controls plus `Theme.ui`,
+- **Themes.** A theme is a folder under `Resources/QuillThemes/<Name>`: the controls plus `Theme.quill`,
   a palette every document reads (and can write, live) as the global `Theme`. Every theme implements
   the same controls — `Panel`, `Label`, `Button`, `CheckBox`, `Switch`, `Slider`, `ProgressBar`,
   `TabBar`, with the shared `ColorPicker` — so switching theme never means editing a document.
@@ -23,7 +31,7 @@ All notable changes to **Quill** are documented here. This project adheres to
   `TabBar`; `Slider`/`ProgressBar` gain `from`/`to`/`step`; `CheckBox`/`Switch` gain `text`).
 - **Theme samples**, one scene each: **Frost** (glass over an animated 3D backdrop), **Arcade**,
   **Tome**, **Vector**, **Pebble**, **Bitmap** and **Pop**, with free (OFL) fonts.
-- **Gallery** (`Resources/QuillThemes/Gallery.ui`) — every control of a theme on one screen, with a
+- **Gallery** (`Resources/QuillThemes/Gallery.quill`) — every control of a theme on one screen, with a
   live accent picker.
 - **`QuillDocument`** component — document + theme in the inspector (the theme picker lists the themes
   in the project and switches live in Play mode), no code needed; shows the gallery when no document
@@ -65,6 +73,8 @@ All notable changes to **Quill** are documented here. This project adheres to
   `Quill/ColorField` shader behind it.
 
 ### Changed
+- **Documents are `.quill` files** (was `.ui`, which is Qt Designer's XML extension, so editors
+  misdetected it). The importer still accepts `.ui` for now; rename yours.
 - Relicensed under the **MIT License** (previously proprietary / all rights reserved).
 - A standalone animation (not `on` a property, not inside a group/Behavior/Transition) now waits for
   `running: true` or `start()`, as in QML — it used to start by itself. Value sources are unchanged.

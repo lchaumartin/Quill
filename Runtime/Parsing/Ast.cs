@@ -20,6 +20,11 @@ namespace Quill.Parsing
         public List<ObjectNode> Children = new List<ObjectNode>();
         public List<FunctionDecl> Functions = new List<FunctionDecl>();
         public int Line;
+
+        // Source positions (offsets into the text), for editor tooling.
+        public int TypeOffset, BodyStart, BodyEnd;           // the type name, `{` and `}`
+        public int IdOffset = -1;                            // the id value, -1 if none
+        public List<(string name, int offset, int end)> SignalDecls = new List<(string, int, int)>();
     }
 
     /// <summary>A `name: expr` assignment, optionally a `property type name: expr` declaration.</summary>
@@ -32,6 +37,10 @@ namespace Quill.Parsing
         public List<HandlerStmt> Handler;       // non-null for signal handlers (`onClicked: ...`)
         public int Line;
 
+        // Source positions, for editor tooling: the (dotted) name, and the value after the colon
+        // (expression, handler, or object value); ValueStart is -1 for a declaration without a value.
+        public int NameOffset, NameEnd, ValueStart = -1, ValueEnd = -1;
+
         public bool IsAlias => IsDeclaration && DeclaredType == "alias";
     }
 
@@ -41,6 +50,7 @@ namespace Quill.Parsing
         public string Name;
         public string[] Params;
         public List<HandlerStmt> Body;
+        public int Line, NameOffset, NameEnd, BodyStart, BodyEnd;
     }
 
     // ---- Statements (signal handlers, functions, ScriptAction) ---------------------------------

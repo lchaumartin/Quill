@@ -2,7 +2,7 @@
   "name": "com.leochaumartin.quill",
   "version": "0.1.0",
   "displayName": "Quill — Declarative UI",
-  "description": "A declarative, reactive UI framework for Unity. Author interfaces in .ui documents with reactive bindings, anchors, positioners, reusable components, signals, animations and custom shaders, and restyle them with themes: every theme implements the same controls, so switching theme never means editing a document. Rendered at a low level (single SDF pass for rectangles, lightweight textured layers for text/images/effects), independent of uGUI and UI Toolkit. URP and Built-in render pipelines supported.",
+  "description": "A declarative, reactive UI framework for Unity. Author interfaces in .quill documents with reactive bindings, anchors, positioners, reusable components, signals, animations and custom shaders, and restyle them with themes: every theme implements the same controls, so switching theme never means editing a document. Rendered at a low level (single SDF pass for rectangles, lightweight textured layers for text/images/effects), independent of uGUI and UI Toolkit. URP and Built-in render pipelines supported.",
   "unity": "6000.0",
   "author": {
     "name": "Leo CHAUMARTIN"
