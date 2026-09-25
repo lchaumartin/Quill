@@ -22,6 +22,7 @@ namespace Quill
         private readonly QuillEngine _engine;
         private readonly List<QuillProperty> _deps = new List<QuillProperty>();
         private bool _queued;
+        private bool _detached;
 
         public Binding(QuillEngine engine, Func<object> expr)
         {
@@ -49,6 +50,8 @@ namespace Quill
 
         public void Evaluate()
         {
+            if (_detached) { _queued = false; return; }   // replaced while it sat in the dirty queue
+
             // Detach old dependencies; they are rebuilt fresh on every evaluation so the graph
             // always reflects the branches actually taken this time.
             for (int i = 0; i < _deps.Count; i++)
@@ -77,6 +80,19 @@ namespace Quill
         }
 
         /// <summary>A dependency changed: schedule a recompute on the engine's dirty queue.</summary>
+        /// <summary>
+        /// Stop driving the target for good: drop every dependency so the binding never
+        /// re-evaluates. Called when the property gets a new binding or an imperative value.
+        /// </summary>
+        internal void Detach()
+        {
+            _detached = true;
+            for (int i = 0; i < _deps.Count; i++)
+                _deps[i].RemoveSubscriber(this);
+            _deps.Clear();
+            Target = null;
+        }
+
         public void Invalidate()
         {
             if (_queued) return;

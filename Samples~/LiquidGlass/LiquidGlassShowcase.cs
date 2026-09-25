@@ -15,7 +15,7 @@ namespace Quill.Samples
     ///
     /// On URP it also turns on the camera's Opaque Texture (a per-camera override), which
     /// <c>Quill/Effect/LiquidGlass</c> needs to see the scene — no pipeline-asset change required.
-    /// Esc shows / hides the interface.
+    /// Esc shows / hides the interface; Tab opens the glass tuning panel.
     /// </summary>
     [AddComponentMenu("Quill/Samples/Liquid Glass Showcase")]
     public sealed class LiquidGlassShowcase : MonoBehaviour
@@ -54,6 +54,9 @@ namespace Quill.Samples
         private QuillSurface _surface;
         private QuillTweens _tweens;
 
+        // Colour of the resting glass tint; the "Tint" slider sets its alpha.
+        private static readonly Color RestTintRgb = new Color(0x0a / 255f, 0x0f / 255f, 0x1e / 255f, 1f);
+
         private int _track;
         private float _elapsed = 38f;
         private int _shownSecond = -1;
@@ -89,6 +92,8 @@ namespace Quill.Samples
             _tweens = new QuillTweens(_engine.Root);
 
             _engine.OnChanged("player", "track", OnTrackChanged);
+            _engine.OnChanged("glassStyle", "tint", ApplyGlassTint);
+            ApplyGlassTint(_engine.GetValue("glassStyle", "tint"));
             ApplyTrack();
             UpdateClock();
 
@@ -101,8 +106,9 @@ namespace Quill.Samples
         {
             if (_engine == null) return;
 
-            if (TogglePressed()) _surface.Toggle();
+            if (KeyPressed(Key.Escape)) _surface.Toggle();
             if (!_surface.Visible) return;
+            if (KeyPressed(Key.Tab)) _engine.SetValue("tuning", "open", !_engine.GetBool("tuning", "open"));
 
             float dt = Time.unscaledDeltaTime;
             _tweens.Step(dt, TransitionSpeed);
@@ -126,6 +132,17 @@ namespace Quill.Samples
             AudioListener.volume = _engine.GetBool("sound", "checked", true)
                 ? (float)_engine.GetNumber("volume", "value", 0.5)
                 : 0f;
+        }
+
+        // ---- Glass tuning ---------------------------------------------------------------------------
+
+        // Quill expressions can't build a colour from a number, so the "Tint" slider's alpha becomes
+        // glassStyle.restTint here. GlassPane picks it up (and eases to it) like any other tint.
+        private void ApplyGlassTint(object raw)
+        {
+            var c = RestTintRgb;
+            c.a = Mathf.Clamp01((float)QuillConvert.ToDouble(raw));
+            _engine.SetValue("glassStyle", "restTint", c);
         }
 
         // ---- Clock ----------------------------------------------------------------------------------
@@ -222,14 +239,17 @@ namespace Quill.Samples
             catch (Exception e) { Debug.LogWarning($"[Quill] Could not enable the camera Opaque Texture: {e.Message}"); }
         }
 
-        // Edge-triggered Escape, working with whichever input backend the project uses.
-        private static bool TogglePressed()
+        private enum Key { Escape, Tab }
+
+        // Edge-triggered key press, working with whichever input backend the project uses.
+        private static bool KeyPressed(Key key)
         {
 #if ENABLE_INPUT_SYSTEM
             var kb = UnityEngine.InputSystem.Keyboard.current;
-            return kb != null && kb.escapeKey.wasPressedThisFrame;
+            if (kb == null) return false;
+            return (key == Key.Tab ? kb.tabKey : kb.escapeKey).wasPressedThisFrame;
 #elif ENABLE_LEGACY_INPUT_MANAGER
-            return Input.GetKeyDown(KeyCode.Escape);
+            return Input.GetKeyDown(key == Key.Tab ? KeyCode.Tab : KeyCode.Escape);
 #else
             return false;
 #endif

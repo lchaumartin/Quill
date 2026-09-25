@@ -50,19 +50,29 @@ namespace Quill
         /// <summary>Imperative assignment. Removes any driving binding and notifies subscribers.</summary>
         public void SetValue(object v)
         {
-            _driver = null;
+            DetachDriver();
             Assign(v);
         }
 
         /// <summary>Attach an expression that drives this property. Evaluated immediately.</summary>
         public void SetBinding(Binding b)
         {
+            if (_driver != b) DetachDriver();
             _driver = b;
             b.Target = this;
             b.Evaluate();
         }
 
         public bool HasBinding => _driver != null;
+
+        // A replaced binding must also stop listening: otherwise its old dependencies keep
+        // re-evaluating it and it overwrites the new value (e.g. a component's default binding
+        // beating the use-site override, or a binding surviving an imperative assignment).
+        private void DetachDriver()
+        {
+            _driver?.Detach();
+            _driver = null;
+        }
 
         /// <summary>Called by the driving binding when it recomputes a new value.</summary>
         internal void AssignFromBinding(object v) => Assign(v);

@@ -18,7 +18,7 @@ Item {
 
     GlassPane {
         anchors.fill: parent
-        cornerRadius: toggle.height * 0.5
+        corner: toggle.height * 0.5
         interactive: true
         active: toggle.checked
         activeTint: toggle.accent

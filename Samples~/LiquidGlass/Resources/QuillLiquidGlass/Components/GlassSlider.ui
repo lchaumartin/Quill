@@ -1,0 +1,102 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// GlassSlider — a horizontal slider built from three glass panes that never overlap: the filled run,
+// a round knob, and the rest of the track, with a caption row above. Drag anywhere on it to set
+// `value`. While held, the knob swells and turns into a clear lens over the backdrop.
+//
+// Public API:
+//   value, from, to (real)   current value and its range
+//   step (real)              snap increment (0 = continuous)
+//   label (string)           caption on the left
+//   display (string)         readout on the right; bind it to format, e.g. Math.round(value) + " px"
+//   accent (color)           tint of the filled run
+//   signal moved             emitted on every drag update
+// Use:  GlassSlider { label: "Blur"; to: 24; step: 1; value: 3; display: Math.round(value) + " px" }
+Item {
+    id: slider
+
+    property real value: 0.5
+    property real from: 0
+    property real to: 1
+    property real step: 0
+    property string label: ""
+    property string display: Math.round(slider.value * 100) / 100
+    property color accent: "#f4f6ffc8"
+    signal moved
+
+    width: 300
+    height: 68
+
+    // Geometry. The knob centre travels the full width minus one knob.
+    property real knob: 30
+    property real trackY: 44
+    property real trackH: 12
+    property real gap: 4
+    property real travel: slider.width - slider.knob
+    property real t: slider.to > slider.from ? Math.clamp((slider.value - slider.from) / (slider.to - slider.from), 0, 1) : 0
+    property real knobX: slider.knob * 0.5 + slider.t * slider.travel
+    property real knobSize: slider.knob + 3 * slider.hover + 12 * slider.grab
+
+    // Eased state (QuillTweens).
+    property real hover
+    property real hoverTarget: drag.containsMouse || drag.pressed ? 1 : 0
+    property real grab
+    property real grabTarget: drag.pressed ? 1 : 0
+
+    // Scratch for the drag handler: the unsnapped value under the pointer.
+    property real raw
+
+    Text { text: slider.label;   fontSize: 13; color: "#ffffffd9"; x: 2; y: 0 }
+    Text { text: slider.display; fontSize: 12; color: slider.grab > 0.5 ? "#ffffff" : "#ffffff99"; anchors.right: parent.right; anchors.rightMargin: 2; y: 1 }
+
+    // Filled run — left of the knob.
+    GlassPane {
+        x: 0
+        y: slider.trackY - slider.trackH * 0.5
+        width: Math.max(0, slider.knobX - slider.knobSize * 0.5 - slider.gap)
+        height: slider.trackH
+        visible: width > 1
+        corner: slider.trackH * 0.5
+        active: true
+        activeTint: slider.accent
+    }
+
+    // Rest of the track — right of the knob.
+    GlassPane {
+        id: rest
+        x: slider.knobX + slider.knobSize * 0.5 + slider.gap
+        y: slider.trackY - slider.trackH * 0.5
+        width: Math.max(0, slider.width - rest.x)
+        height: slider.trackH
+        visible: width > 1
+        corner: slider.trackH * 0.5
+    }
+
+    // Knob — solid at rest, a clear magnifying lens while held.
+    GlassPane {
+        x: slider.knobX - slider.knobSize * 0.5
+        y: slider.trackY - slider.knobSize * 0.5
+        width: slider.knobSize
+        height: slider.knobSize
+        corner: slider.knobSize * 0.5
+        lens: 1 + 1.5 * slider.grab
+        active: true
+        activeTint: drag.pressed ? "#ffffff1f" : "#f8faffeb"
+    }
+
+    MouseArea {
+        id: drag
+        anchors.fill: parent
+        onPressed: {
+            slider.raw = slider.from + Math.clamp((drag.mouseX - slider.knob * 0.5) / slider.travel, 0, 1) * (slider.to - slider.from);
+            slider.value = slider.step > 0 ? Math.round(slider.raw / slider.step) * slider.step : slider.raw;
+            slider.moved()
+        }
+        onPositionChanged: {
+            slider.raw = slider.from + Math.clamp((drag.mouseX - slider.knob * 0.5) / slider.travel, 0, 1) * (slider.to - slider.from);
+            slider.value = slider.step > 0 ? Math.round(slider.raw / slider.step) * slider.step : slider.raw;
+            slider.moved()
+        }
+    }
+}

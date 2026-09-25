@@ -7,8 +7,14 @@
 //   interactive (bool)   hover / press feedback and the `clicked` signal (off = purely visual)
 //   active      (bool)   lit state: the pane takes `activeTint`
 //   restTint, hoverTint, activeTint (color)   tints for each state, "#RRGGBBAA"
+//   corner      (real)   corner radius in px, before the style's roundness is applied
+//   lens        (real)   refraction multiplier for this pane (1 = the style's refraction)
 //   signal clicked
-//   Any LiquidGlass uniform (cornerRadius, refraction, radius, softness) can be overridden.
+//   Any LiquidGlass uniform (cornerRadius, refraction, radius, softness) can still be overridden.
+//
+// Shared look: if the document declares an element with id `glassStyle` (the showcase's tuning
+// panel drives one), every pane reads refraction, blur, softness, roundness and rest tint from it
+// live. Without one, the built-in defaults below apply, so the component works on its own.
 //
 // Children render on top of the glass. Keep glass panes from overlapping each other: effects share
 // one render queue, so the order of two overlapping panes is not defined.
@@ -20,7 +26,7 @@ ShaderEffect {
     property bool active: false
     signal clicked
 
-    property color restTint: "#0a0f1e38"
+    property color restTint: glassStyle ? glassStyle.restTint : "#0a0f1e38"
     property color hoverTint: "#ffffff2e"
     property color activeTint: "#3a86ffcc"
 
@@ -33,11 +39,14 @@ ShaderEffect {
     property color tint
     property color tintTarget: pane.active ? pane.activeTint : (pane.hoverTarget > 0.5 ? pane.hoverTint : pane.restTint)
 
+    property real corner: 28
+    property real lens: 1
+
     // The lens thickens under the pointer and swells on press.
-    cornerRadius: 28
-    refraction: 24 + 12 * pane.hover + 18 * pane.press
-    radius: 3 + 5 * pane.press
-    softness: 1.5
+    cornerRadius: pane.corner * (glassStyle ? glassStyle.roundness : 1)
+    refraction: (glassStyle ? glassStyle.refraction : 24) * pane.lens * (1 + 0.5 * pane.hover + 0.75 * pane.press)
+    radius: (glassStyle ? glassStyle.blur : 3) + 5 * pane.press
+    softness: glassStyle ? glassStyle.softness : 10
 
     MouseArea {
         id: area

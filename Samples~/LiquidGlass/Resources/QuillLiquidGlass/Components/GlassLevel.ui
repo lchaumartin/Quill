@@ -29,11 +29,10 @@ Item {
             y: level.height - (index + 1) * (level.cell + 6) + 6
             width: level.width
             height: level.cell
-            cornerRadius: index == 0 || index == 7 ? 18 : 7
-            refraction: 10 + 6 * level.hover
+            corner: index == 0 || index == 7 ? 18 : 7
+            lens: 0.42 + 0.25 * level.hover
             active: index < level.lit
             activeTint: "#f4f6ffdc"
-            restTint: "#0a0f1e40"
         }
     }
 

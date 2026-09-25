@@ -250,11 +250,16 @@ ShaderEffect {
 |----------------|---------|-----------------------------------------------------------|----------------------|
 | `cornerRadius` | `real`  | rounded-corner radius in pixels                           | square               |
 | `refraction`   | `real`  | width in pixels of the lens band along the edge           | no refraction        |
-| `softness`     | `real`  | edge fade in pixels (never below 1 px)                    | crisp, antialiased   |
+| `softness`     | `real`  | width in pixels of the rounded (bevelled) glass edge      | sharp, flat edge     |
 | `radius`       | `real`  | blur radius in screen pixels                              | no blur              |
 | `tint`         | `color` | colour laid over the backdrop, by its alpha               | untinted             |
 
-The rim and sheen are always on — they are what makes it read as glass.
+The silhouette is always crisp; `softness` shapes the edge instead of fading it. It is the width of a
+quarter-round bevel that curves from vertical at the silhouette to flat `softness` pixels in: its
+normals refract the backdrop and catch a top-left highlight, a fainter bottom-right bounce and a
+grazing reflection. A few pixels read as a polished edge, tens of pixels as a thick rounded slab; the
+bevel is capped at half the pane's smaller side, so thin panes become glass tubes. At `0` the edge is
+flat, with a thin rim line. The sheen is always on — it is part of what makes it read as glass.
 
 ### The Liquid Glass sample
 
@@ -264,9 +269,15 @@ orbs and an aurora wallpaper. Everything is live: hover and press states ease in
 chips switch, the levels drag, the music player runs, and the brightness level, **Focus** and
 **Night Shift** change the 3D scene behind the glass through C#.
 
+**Tune glass** (top right, or **Tab**) slides in a panel of glass sliders — refraction, blur, corner
+roundness, edge softness and tint — and every pane on screen follows them live, the sliders included.
+The panes read their look from a `glassStyle` element in the document; `GlassPane` falls back to its
+built-in defaults when there is none, so the components still work on their own.
+
 - `Resources/QuillLiquidGlass/LiquidGlassShowcase.ui` — the document.
-- `Components/GlassPane.ui`, `GlassToggle.ui`, `GlassChip.ui`, `GlassLevel.ui` — reusable glass
-  building blocks; copy them into your own project.
+- `Components/GlassPane.ui`, `GlassToggle.ui`, `GlassChip.ui`, `GlassLevel.ui`, `GlassSlider.ui` —
+  reusable glass building blocks; copy them into your own project. `GlassSlider` is three glass panes
+  that never overlap (filled run, knob, rest of the track); the knob turns into a clear lens while held.
 - `LiquidGlassShowcase.cs` — bootstrap + the app side (clock, player, scene wiring). On URP it turns
   on the camera's **Opaque Texture** by itself (a per-camera override), so no URP-asset change is needed.
 - `QuillTweens.cs` — smooth transitions by convention: any element with both `foo` and `fooTarget`

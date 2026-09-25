@@ -12,16 +12,23 @@ All notable changes to **Quill** are documented here. This project adheres to
   `tint`, as a dual-SubShader: `_CameraOpaqueTexture` on URP, `GrabPass` on Built-in.
 - **`Quill/Effect/LiquidGlass`** — a rounded glass pane that refracts, blurs and rim-lights the
   backdrop (`cornerRadius`, `refraction`, `softness`, `radius`, `tint`); same dual-SubShader backdrop
-  sources as `Quill/Effect/Blur`.
+  sources as `Quill/Effect/Blur`. `softness` is the width of a rounded, lit, refracting bevel along a
+  crisp silhouette (0 = sharp flat edge) rather than an alpha fade.
 - **Liquid Glass sample** (`Samples~/LiquidGlass`) — a ready-to-play scene with a control-centre UI
   built from LiquidGlass panes over an animated 3D backdrop; reusable `GlassPane`, `GlassToggle`,
   `GlassChip` and `GlassLevel` components; `QuillTweens` for eased `foo`/`fooTarget` transitions.
+- Liquid Glass sample: a **Tune glass** panel (button or Tab) with live sliders for refraction, blur,
+  corner roundness, edge softness and tint, driving every pane through a `glassStyle` element; new
+  `GlassSlider` component; `GlassPane` gains `corner` and `lens`.
 
 ### Changed
 - Relicensed under the **MIT License** (previously proprietary / all rights reserved).
 - The `GameMenu` sample's animated background is now a blurred, dimmed backdrop.
 
 ### Fixed
+- Replacing a binding — with a new one, or by assigning a value in a handler or from C# — now fully
+  detaches the old one. Before, it kept listening to its dependencies and could overwrite the new
+  value, e.g. a component's default binding beating a use-site override such as `display: ...`.
 - `ShaderEffect` no longer writes a float `_Time` on its materials (Unity rejected it every frame with
   "Trying to set builtin parameter"). Effect shaders use Unity's built-in `_Time` (`_Time.y` = seconds).
 - `Quill/Effect/LiquidGlass` and `Quill/Effect/Blur` now declare their uniforms in `Properties` and a

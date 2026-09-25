@@ -20,7 +20,7 @@ Item {
 
     GlassPane {
         anchors.fill: parent
-        cornerRadius: chip.height * 0.5
+        corner: chip.height * 0.5
         interactive: true
         active: chip.checked
         activeTint: chip.accent

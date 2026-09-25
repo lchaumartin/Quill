@@ -5,6 +5,7 @@
 // A lock-screen / control-centre style layout built entirely from Quill/Effect/LiquidGlass panes
 // floating over a live 3D backdrop. Loaded by LiquidGlassShowcase.cs, which also feeds it the
 // clock, the music player, and turns the sliders and toggles into changes in the 3D scene.
+// The "Tune glass" panel (or Tab) exposes the glass itself: every pane follows its sliders live.
 //
 // Layout rule for glass: panes never overlap each other, and anything drawn on glass is Text.
 // (Effects render above Rectangles and share one render queue — see the README.)
@@ -34,6 +35,19 @@ Item {
         property string remainingText: "-0:00"
     }
 
+    // ---- Glass style ----------------------------------------------------------------------------
+    // Every GlassPane reads its look from this element (see GlassPane.ui); the tuning panel's sliders
+    // drive it. `restTint` is rebuilt from `tint` by LiquidGlassShowcase.cs — Quill has no colour maths.
+    Item {
+        id: glassStyle
+        property real refraction: tuneRefraction.value
+        property real blur: tuneBlur.value
+        property real roundness: tuneCorners.value
+        property real softness: tuneSoftness.value
+        property real tint: tuneTint.value
+        property color restTint: "#0a0f1e38"
+    }
+
     // ---- Chrome ---------------------------------------------------------------------------------
     Text {
         text: "QUILL  ·  LIQUID GLASS"
@@ -44,7 +58,7 @@ Item {
         opacity: root.intro
     }
     Text {
-        text: "Drag the levels  ·  click the glass  ·  Esc hides the interface"
+        text: "Drag the levels  ·  click the glass  ·  Tab tunes the glass  ·  Esc hides the interface"
         fontSize: 13
         color: "#ffffff80"
         anchors.horizontalCenter: parent.horizontalCenter
@@ -53,12 +67,30 @@ Item {
         opacity: root.intro
     }
 
+    Item {
+        width: 160
+        height: 24
+        anchors.right: parent.right
+        anchors.rightMargin: 32
+        y: 22
+        opacity: root.intro
+        Text {
+            text: tuning.open ? "DONE" : "TUNE GLASS"
+            fontSize: 12
+            color: tuneArea.containsMouse ? "#ffffff" : "#ffffff8c"
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+        }
+        MouseArea { id: tuneArea; anchors.fill: parent; onClicked: tuning.open = !tuning.open }
+    }
+
     // ---- Stage ----------------------------------------------------------------------------------
     Item {
         id: stage
         width: 1120
         height: 600
         anchors.centerIn: parent
+        anchors.horizontalCenterOffset: -190 * tuning.shown   // make room for the tuning panel
         anchors.verticalCenterOffset: 36 * (1 - root.intro)
         opacity: root.intro
 
@@ -69,7 +101,7 @@ Item {
         GlassPane {
             id: note
             x: 0; y: 332; width: 460; height: 112
-            cornerRadius: 30
+            corner: 30
             interactive: true
             property real page: 0
             onClicked: note.page = (note.page + 1) % 3
@@ -94,7 +126,7 @@ Item {
 
         GlassPane {
             x: 0; y: 460; width: 460; height: 112
-            cornerRadius: 30
+            corner: 30
             interactive: true
 
             Text { text: "UP NEXT"; fontSize: 11; color: "#ffffff99"; x: 26; y: 20 }
@@ -118,7 +150,7 @@ Item {
             // Now playing.
             GlassPane {
                 x: 224; y: 0; width: 208; height: 208
-                cornerRadius: 30
+                corner: 30
 
                 Text { text: "NOW PLAYING"; fontSize: 11; color: "#ffffff99"; x: 20; y: 20 }
                 Text { text: player.title;  fontSize: 19; color: "#ffffff";   x: 20; y: 42 }
@@ -163,7 +195,7 @@ Item {
             // Weather — click to switch units.
             GlassPane {
                 x: 224; y: 224; width: 208; height: 208
-                cornerRadius: 30
+                corner: 30
                 interactive: true
                 onClicked: root.celsius = !root.celsius
 
@@ -193,6 +225,87 @@ Item {
                 detailOff: "Off"
                 accent: "#ff9f43cc"
             }
+        }
+    }
+
+    // ---- Tuning panel ---------------------------------------------------------------------------
+    // Slides in from the right (Tab, or TUNE GLASS) while the stage moves over. The sliders are glass
+    // too, so they preview every change on themselves. Nothing here overlaps another glass pane.
+    Item {
+        id: tuning
+        property bool open: false
+        property real shown
+        property real shownTarget: tuning.open ? 1 : 0
+
+        width: 300
+        height: 392
+        anchors.right: parent.right
+        anchors.rightMargin: 56 - 48 * (1 - tuning.shown)
+        anchors.verticalCenter: parent.verticalCenter
+        visible: tuning.shown > 0.01
+        opacity: tuning.shown * root.intro
+
+        Text { text: "GLASS"; fontSize: 11; color: "#ffffff99"; x: 2; y: 0 }
+        Item {
+            width: 72
+            height: 24
+            anchors.right: parent.right
+            y: -5
+            Text {
+                text: "Reset"
+                fontSize: 12
+                color: resetArea.containsMouse ? "#ffffff" : "#ffffff99"
+                anchors.right: parent.right
+                anchors.rightMargin: 2
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            MouseArea {
+                id: resetArea
+                anchors.fill: parent
+                onClicked: {
+                    tuneRefraction.value = 24;
+                    tuneBlur.value = 3;
+                    tuneCorners.value = 1;
+                    tuneSoftness.value = 10;
+                    tuneTint.value = 0.22
+                }
+            }
+        }
+
+        GlassSlider {
+            id: tuneRefraction
+            y: 32
+            label: "Refraction"
+            to: 80; step: 1; value: 24
+            display: Math.round(value) + " px"
+        }
+        GlassSlider {
+            id: tuneBlur
+            y: 104
+            label: "Blur"
+            to: 24; step: 0.5; value: 3
+            display: Math.round(value * 10) / 10 + " px"
+        }
+        GlassSlider {
+            id: tuneCorners
+            y: 176
+            label: "Corners"
+            to: 1; step: 0.01; value: 1
+            display: Math.round(value * 100) + "%"
+        }
+        GlassSlider {
+            id: tuneSoftness
+            y: 248
+            label: "Edge softness"
+            to: 40; step: 1; value: 10
+            display: Math.round(value) + " px"
+        }
+        GlassSlider {
+            id: tuneTint
+            y: 320
+            label: "Tint"
+            to: 0.6; step: 0.01; value: 0.22
+            display: Math.round(value * 100) + "%"
         }
     }
 }

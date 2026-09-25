@@ -9,12 +9,19 @@
 // Quill properties used here (unset properties arrive as 0, so 0 is always a sane state):
 //   real  cornerRadius  rounded-corner radius in pixels               (0 = square corners)
 //   real  refraction    width in pixels of the lens band at the edge  (0 = no refraction)
-//   real  softness      edge fade in pixels, min 1 px                 (0 = crisp, antialiased)
+//   real  softness      width in pixels of the rounded glass edge     (0 = sharp, flat edge)
 //   real  radius        blur kernel radius in screen pixels           (0 = no blur)
 //   color tint          colour laid over the backdrop, by alpha       (alpha 0 = untinted)
 //
 // Refraction: inside the lens band the backdrop sample is pulled toward the pane's centre,
 // fully at the edge, fading out `refraction` pixels in — a convex, magnifying-edge look.
+//
+// Softness: the silhouette is always crisp (1 px antialiasing). `softness` is the width of a
+// quarter-round bevel along it: the surface curves from vertical at the silhouette to flat
+// `softness` pixels in. The bevel's normals refract the backdrop (Snell, glass IOR 1.5, on top of
+// the lens band) and are lit: a key highlight from the top-left, a fainter bounce from the
+// bottom-right and a grazing reflection toward the edge. At 0 the pane is a flat sheet with a thin
+// rim line; a few pixels read as a polished edge; tens of pixels as a thick, rounded slab.
 //
 // Every forwarded uniform is declared in Properties and, on URP, in the UnityPerMaterial cbuffer.
 // That is what keeps values per material: with bare globals the SRP Batcher treats the shader as
@@ -90,6 +97,16 @@ Shader "Quill/Effect/LiquidGlass"
                 return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
             }
 
+            // Outward unit direction of that SDF's gradient (item px, +y down). Straight edges
+            // meet at a mitre when the corner radius is smaller than the bevel, like cut glass.
+            float2 sdRoundBoxDir(float2 p, float2 halfSize, float r)
+            {
+                float2 q = abs(p) - halfSize + r;
+                float2 g = (q.x > 0.0 && q.y > 0.0) ? normalize(q)
+                         : (q.x > q.y ? float2(1.0, 0.0) : float2(0.0, 1.0));
+                return g * float2(p.x < 0.0 ? -1.0 : 1.0, p.y < 0.0 ? -1.0 : 1.0);
+            }
+
             v2f vert(appdata v)
             {
                 v2f o;
@@ -113,13 +130,32 @@ Shader "Quill/Effect/LiquidGlass"
                 float  cr  = clamp(cornerRadius, 0.0, min(ext.x, ext.y));
                 float  d   = sdRoundBox(p, ext, cr);
 
-                float mask = saturate(-d / max(softness, 1.0));   // 1 inside, fades over `softness`
+                // Crisp, antialiased silhouette at every softness: the bevel shapes the edge, it
+                // never fades it.
+                float mask = saturate(-d);
                 if (mask <= 0.0) return float4(0.0, 0.0, 0.0, 0.0);
 
-                // Refraction — pull the sample toward the centre inside the edge band.
-                float  edge = saturate(-d / max(refraction, 1e-4));
+                // Shading reads the SDF at least 1 px in, so the antialiased silhouette pixel matches
+                // its neighbour instead of showing the steepest point of the lens as a hard line.
+                float ds = min(d, -1.0);
+
+                // Lens band — pull the sample toward the centre inside the edge band.
+                float  edge = saturate(-ds / max(refraction, 1e-4));
                 float  k    = sin(pow(edge, 0.25) * 1.5707963);   // 0 at edge -> 1 inside
                 float2 uv   = lerp(cuv, suv, k);
+
+                // Rounded edge — a quarter-round bevel `softness` px wide (see header). Its normal
+                // refracts the view ray; the ray's drift across the bevel's depth shifts the sample.
+                float  bevel = clamp(softness, 0.0, min(ext.x, ext.y));
+                float3 n     = float3(0.0, 0.0, 1.0);
+                if (bevel > 0.0)
+                {
+                    float u = 1.0 - saturate(-ds / bevel);            // 1 at the silhouette -> 0 on top
+                    n = float3(sdRoundBoxDir(p, ext, cr) * u, sqrt(saturate(1.0 - u * u)));
+                    float3 t = refract(float3(0.0, 0.0, -1.0), n, 1.0 / 1.5);
+                    float2 bendPx = t.xy * (bevel / max(-t.z, 0.2));
+                    uv += bendPx / max(_Rect.zw, 1.0) * s2u;
+                }
 
                 // 9x9 box blur spanning +/- `radius` pixels.
                 float3 acc = Backdrop(uv);
@@ -136,11 +172,21 @@ Shader "Quill/Effect/LiquidGlass"
 
                 float3 col = lerp(acc, tint.rgb, saturate(tint.a));
 
-                // Lighting — thin rim along the edge + soft top-down sheen (scaled to the height).
+                // Lighting — soft top-down sheen, plus a thin rim line on a flat edge. The rim fades
+                // out as the bevel grows, where its own highlights take over.
                 float  dn   = d / max(_Rect.w, 1.0);
-                float  rim  = smoothstep(0.03, 0.0, abs(dn)) * 0.5;
+                float  rim  = smoothstep(0.03, 0.0, abs(dn)) * 0.5 * saturate(1.0 - bevel / 3.0);
                 float  grad = (0.5 + (0.5 - i.uv.y) * 0.5) * 0.10;
                 col += rim + grad;
+                if (bevel > 0.0)
+                {
+                    float3 keyH    = normalize(float3(-0.566, -0.755, 1.330));  // light up-left, half-vector
+                    float3 bounceH = normalize(float3( 0.566,  0.755, 1.330));  // light down-right
+                    float  spec = pow(saturate(dot(n, keyH)), 20.0) * 0.9
+                                + pow(saturate(dot(n, bounceH)), 20.0) * 0.35;
+                    float  graze = (1.0 - n.z) * (1.0 - n.z) * 0.35;           // reflection toward the edge
+                    col += spec + graze;
+                }
 
                 return float4(col, saturate(_Opacity * mask));
             }
@@ -196,6 +242,16 @@ Shader "Quill/Effect/LiquidGlass"
                 return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
             }
 
+            // Outward unit direction of that SDF's gradient (item px, +y down). Straight edges
+            // meet at a mitre when the corner radius is smaller than the bevel, like cut glass.
+            float2 sdRoundBoxDir(float2 p, float2 halfSize, float r)
+            {
+                float2 q = abs(p) - halfSize + r;
+                float2 g = (q.x > 0.0 && q.y > 0.0) ? normalize(q)
+                         : (q.x > q.y ? float2(1.0, 0.0) : float2(0.0, 1.0));
+                return g * float2(p.x < 0.0 ? -1.0 : 1.0, p.y < 0.0 ? -1.0 : 1.0);
+            }
+
             v2f vert(appdata v)
             {
                 v2f o;
@@ -216,12 +272,32 @@ Shader "Quill/Effect/LiquidGlass"
                 float  cr  = clamp(cornerRadius, 0.0, min(ext.x, ext.y));
                 float  d   = sdRoundBox(p, ext, cr);
 
-                float mask = saturate(-d / max(softness, 1.0));
+                // Crisp, antialiased silhouette at every softness: the bevel shapes the edge, it
+                // never fades it.
+                float mask = saturate(-d);
                 if (mask <= 0.0) return float4(0.0, 0.0, 0.0, 0.0);
 
-                float  edge = saturate(-d / max(refraction, 1e-4));
-                float  k    = sin(pow(edge, 0.25) * 1.5707963);
+                // Shading reads the SDF at least 1 px in, so the antialiased silhouette pixel matches
+                // its neighbour instead of showing the steepest point of the lens as a hard line.
+                float ds = min(d, -1.0);
+
+                // Lens band — pull the sample toward the centre inside the edge band.
+                float  edge = saturate(-ds / max(refraction, 1e-4));
+                float  k    = sin(pow(edge, 0.25) * 1.5707963);   // 0 at edge -> 1 inside
                 float2 uv   = lerp(cuv, guv, k);
+
+                // Rounded edge — a quarter-round bevel `softness` px wide (see header). Its normal
+                // refracts the view ray; the ray's drift across the bevel's depth shifts the sample.
+                float  bevel = clamp(softness, 0.0, min(ext.x, ext.y));
+                float3 n     = float3(0.0, 0.0, 1.0);
+                if (bevel > 0.0)
+                {
+                    float u = 1.0 - saturate(-ds / bevel);            // 1 at the silhouette -> 0 on top
+                    n = float3(sdRoundBoxDir(p, ext, cr) * u, sqrt(saturate(1.0 - u * u)));
+                    float3 t = refract(float3(0.0, 0.0, -1.0), n, 1.0 / 1.5);
+                    float2 bendPx = t.xy * (bevel / max(-t.z, 0.2));
+                    uv += bendPx / max(_Rect.zw, 1.0) * s2u;
+                }
 
                 float3 acc = Backdrop(uv);
                 float  r   = max(radius, 0.0);
@@ -237,10 +313,21 @@ Shader "Quill/Effect/LiquidGlass"
 
                 float3 col = lerp(acc, tint.rgb, saturate(tint.a));
 
+                // Lighting — soft top-down sheen, plus a thin rim line on a flat edge. The rim fades
+                // out as the bevel grows, where its own highlights take over.
                 float  dn   = d / max(_Rect.w, 1.0);
-                float  rim  = smoothstep(0.03, 0.0, abs(dn)) * 0.5;
+                float  rim  = smoothstep(0.03, 0.0, abs(dn)) * 0.5 * saturate(1.0 - bevel / 3.0);
                 float  grad = (0.5 + (0.5 - i.uv.y) * 0.5) * 0.10;
                 col += rim + grad;
+                if (bevel > 0.0)
+                {
+                    float3 keyH    = normalize(float3(-0.566, -0.755, 1.330));  // light up-left, half-vector
+                    float3 bounceH = normalize(float3( 0.566,  0.755, 1.330));  // light down-right
+                    float  spec = pow(saturate(dot(n, keyH)), 20.0) * 0.9
+                                + pow(saturate(dot(n, bounceH)), 20.0) * 0.35;
+                    float  graze = (1.0 - n.z) * (1.0 - n.z) * 0.35;           // reflection toward the edge
+                    col += spec + graze;
+                }
 
                 return float4(col, saturate(_Opacity * mask));
             }
