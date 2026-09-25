@@ -1,0 +1,53 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// TabBar — Vector: spaced monospace tabs; the current one is bracketed and underlined.
+// Same API in every theme: model (list of strings), currentIndex, enabled, signal activated(int index)
+Row {
+    id: control
+
+    property var model: []
+    property int currentIndex: 0
+    property bool enabled: true
+    signal activated(int index)
+
+    spacing: 8
+    opacity: control.enabled ? 1 : 0.35
+
+    Repeater {
+        model: control.model
+
+        Item {
+            width: tabLabel.contentWidth + 26
+            height: 34
+
+            Rectangle {
+                width: parent.width
+                height: parent.height
+                color: index == control.currentIndex ? Qt.alpha(Theme.accent, 0.1) : tabArea.containsMouse ? Theme.controlHover : Qt.alpha(Theme.controlHover, 0)
+            }
+            Brackets {
+                length: 7
+                thickness: 1
+                visible: index == control.currentIndex
+            }
+            Text {
+                id: tabLabel
+                text: modelData
+                color: index == control.currentIndex ? Theme.accent : tabArea.containsMouse ? Theme.text : Theme.textMuted
+                fontSize: 13
+                font.family: Theme.font
+                font.capitalization: Font.AllUppercase
+                font.letterSpacing: 2
+                anchors.centerIn: parent
+            }
+            MouseArea {
+                id: tabArea
+                anchors.fill: parent
+                hoverEnabled: true
+                enabled: control.enabled
+                onClicked: { control.currentIndex = index; control.activated(index) }
+            }
+        }
+    }
+}

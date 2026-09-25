@@ -2,7 +2,7 @@
   "name": "com.leochaumartin.quill",
   "version": "0.1.0",
   "displayName": "Quill — Declarative UI",
-  "description": "A declarative, reactive UI framework for Unity. Author interfaces in .ui documents with reactive bindings, anchors, positioners, reusable components, signals, animations, custom shaders, and a clean C# interop layer. Rendered at a low level (single SDF pass for rectangles, lightweight textured layers for text/images/effects), independent of uGUI and UI Toolkit. URP and Built-in render pipelines supported.",
+  "description": "A declarative, reactive UI framework for Unity. Author interfaces in .ui documents with reactive bindings, anchors, positioners, reusable components, signals, animations and custom shaders, and restyle them with themes: every theme implements the same controls, so switching theme never means editing a document. Rendered at a low level (single SDF pass for rectangles, lightweight textured layers for text/images/effects), independent of uGUI and UI Toolkit. URP and Built-in render pipelines supported.",
   "unity": "6000.0",
   "author": {
     "name": "Leo CHAUMARTIN"
@@ -13,21 +13,52 @@
     "declarative",
     "reactive",
     "framework",
-    "menu"
+    "menu",
+    "theme"
   ],
   "dependencies": {
     "com.unity.inputsystem": "1.11.0"
   },
   "samples": [
     {
-      "displayName": "Demos",
-      "description": "A widget gallery and a full game-menu hierarchy, with a bootstrap component.",
-      "path": "Samples~/Demos"
+      "displayName": "Theme — Slate (built-in)",
+      "description": "The built-in theme's gallery scene: clean and flat, for settings screens, tools and simulations. Slate itself ships with the package; this sample is just the scene.",
+      "path": "Samples~/Slate"
     },
     {
-      "displayName": "Liquid Glass",
-      "description": "A ready-to-play scene: a control-centre UI built from Quill/Effect/LiquidGlass panes over an animated 3D backdrop, with reusable glass components.",
-      "path": "Samples~/LiquidGlass"
+      "displayName": "Theme — Frost",
+      "description": "Frosted glass panes that blur and refract your 3D scene, for premium menus and HUDs. Controls, palette, the Inter font and a gallery scene with an animated backdrop.",
+      "path": "Samples~/Frost"
+    },
+    {
+      "displayName": "Theme — Arcade",
+      "description": "Neon on midnight with glowing outlines, for racing, rhythm and retro-wave games. Controls, palette, the Orbitron and Rajdhani fonts and a gallery scene.",
+      "path": "Samples~/Arcade"
+    },
+    {
+      "displayName": "Theme — Tome",
+      "description": "Ink on parchment with a wax-red accent, for RPG inventories, quest logs and dialogue. Controls, palette, the Cinzel and EB Garamond fonts and a gallery scene.",
+      "path": "Samples~/Tome"
+    },
+    {
+      "displayName": "Theme — Vector",
+      "description": "Hairlines, corner brackets and monospace capitals, for sci-fi HUDs, strategy and simulation. Controls, palette, the Share Tech Mono font and a gallery scene.",
+      "path": "Samples~/Vector"
+    },
+    {
+      "displayName": "Theme — Pebble",
+      "description": "Soft clay, pastels and springy motion, for casual and mobile games. Controls, palette, the Fredoka and Nunito fonts and a gallery scene.",
+      "path": "Samples~/Pebble"
+    },
+    {
+      "displayName": "Theme — Bitmap",
+      "description": "Chunky bevelled pixels and a 16-colour palette, for 2D retro games. Controls, palette, the Press Start 2P and Pixelify Sans fonts and a gallery scene.",
+      "path": "Samples~/Bitmap"
+    },
+    {
+      "displayName": "Theme — Pop",
+      "description": "Thick ink, hard shadows and loud colours, for party, puzzle and comic-style games. Controls, palette, the Bangers and Nunito fonts and a gallery scene.",
+      "path": "Samples~/Pop"
     }
   ],
   "license": "MIT",

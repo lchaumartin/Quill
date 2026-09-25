@@ -1,0 +1,30 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// PixelBlock — Bitmap: a block with notched corners, a dark outline and a one-pixel bevel (light
+// top-left, dark bottom-right; swapped when `sunken`). Every Bitmap control is made of these.
+//   color (fill), outline (color), sunken (bool), bevel (bool)
+Item {
+    id: block
+
+    property color color: Theme.surface
+    property color outline: Theme.border
+    property bool sunken: false
+    property bool bevel: true
+    property real p: Theme.pixel
+
+    property color light: Qt.lighter(block.color, 1.3)
+    property color dark: Qt.darker(block.color, 1.45)
+
+    // Outline: a plus shape (a notch at each corner).
+    Rectangle { x: block.p; width: block.width - 2 * block.p; height: block.height; color: block.outline }
+    Rectangle { y: block.p; width: block.width; height: block.height - 2 * block.p; color: block.outline }
+    // Fill: the same, one pixel in.
+    Rectangle { x: 2 * block.p; y: block.p; width: block.width - 4 * block.p; height: block.height - 2 * block.p; color: block.color }
+    Rectangle { x: block.p; y: 2 * block.p; width: block.width - 2 * block.p; height: block.height - 4 * block.p; color: block.color }
+    // Bevel.
+    Rectangle { x: 2 * block.p; y: block.p; width: block.width - 4 * block.p; height: block.p; visible: block.bevel; color: block.sunken ? block.dark : block.light }
+    Rectangle { x: block.p; y: 2 * block.p; width: block.p; height: block.height - 4 * block.p; visible: block.bevel; color: block.sunken ? block.dark : block.light }
+    Rectangle { x: 2 * block.p; y: block.height - 2 * block.p; width: block.width - 4 * block.p; height: block.p; visible: block.bevel; color: block.sunken ? block.light : block.dark }
+    Rectangle { x: block.width - 2 * block.p; y: 2 * block.p; width: block.p; height: block.height - 4 * block.p; visible: block.bevel; color: block.sunken ? block.light : block.dark }
+}

@@ -1,0 +1,31 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Panel — Vector: a translucent plate with a hairline edge, accent corner brackets and a small
+// status tick in the top-right corner.
+Rectangle {
+    id: panel
+
+    width: 340
+    height: 200
+    color: Theme.surface
+    border.width: Theme.borderWidth
+    border.color: Theme.border
+
+    Brackets { length: 16; thickness: 2 }
+
+    Rectangle {
+        x: panel.width - 34
+        y: 10
+        width: 14
+        height: 4
+        color: Qt.alpha(Theme.accent, 0.5)
+    }
+    Rectangle {
+        x: panel.width - 16
+        y: 10
+        width: 4
+        height: 4
+        color: Theme.accent
+    }
+}

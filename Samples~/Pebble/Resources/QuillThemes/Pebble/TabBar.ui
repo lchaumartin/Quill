@@ -1,0 +1,67 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// TabBar — Pebble: a soft groove; the current tab is a white pill lifted on its own shadow.
+// Same API in every theme: model (list of strings), currentIndex, enabled, signal activated(int index)
+Rectangle {
+    id: control
+
+    property var model: []
+    property int currentIndex: 0
+    property bool enabled: true
+    signal activated(int index)
+
+    width: row.width + 10
+    height: 46
+    radius: 23
+    color: Theme.control
+    opacity: control.enabled ? 1 : 0.45
+
+    Row {
+        id: row
+        x: 5
+        y: 5
+        spacing: 2
+
+        Repeater {
+            model: control.model
+
+            Item {
+                property bool current: index == control.currentIndex
+                width: Math.max(74, tabLabel.contentWidth + 32)
+                height: 36
+
+                Rectangle {
+                    y: 3
+                    width: parent.width
+                    height: parent.height
+                    radius: 18
+                    softness: 8
+                    color: Theme.shadow
+                    visible: parent.current
+                }
+                Rectangle {
+                    width: parent.width
+                    height: parent.height
+                    radius: 18
+                    color: parent.current ? "#ffffff" : tabArea.containsMouse ? Theme.controlHover : Qt.alpha(Theme.controlHover, 0)
+                }
+                Text {
+                    id: tabLabel
+                    text: modelData
+                    color: parent.current ? Theme.accent : Theme.textMuted
+                    fontSize: 16
+                    font.family: Theme.titleFont
+                    anchors.centerIn: parent
+                }
+                MouseArea {
+                    id: tabArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: control.enabled
+                    onClicked: { control.currentIndex = index; control.activated(index) }
+                }
+            }
+        }
+    }
+}

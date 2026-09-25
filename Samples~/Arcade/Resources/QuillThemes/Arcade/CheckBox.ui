@@ -1,0 +1,65 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// CheckBox — Arcade: a neon square that fills with a glowing cyan core.
+// Same API in every theme: text, checked, enabled, signal toggled
+Item {
+    id: control
+
+    property string text: ""
+    property bool checked: false
+    property bool enabled: true
+    signal toggled
+
+    width: box.width + (control.text.length > 0 ? 12 + label.contentWidth : 0)
+    height: Math.max(box.height, label.contentHeight)
+    opacity: control.enabled ? 1 : 0.35
+
+    Rectangle {
+        id: box
+        width: 22
+        height: 22
+        radius: Theme.radius
+        anchors.verticalCenter: parent.verticalCenter
+        color: area.containsMouse ? Theme.controlHover : Theme.control
+        border.width: Theme.borderWidth
+        border.color: control.checked ? Theme.accent : Theme.border
+
+        Rectangle {
+            x: -2; y: -2
+            width: 14; height: 14
+            anchors.centerIn: parent
+            radius: 2
+            softness: 12
+            color: Qt.alpha(Theme.accent, 0.8 * Theme.glow)
+            visible: control.checked
+        }
+        Rectangle {
+            width: 10
+            height: 10
+            radius: 1
+            anchors.centerIn: parent
+            color: Theme.accent
+            visible: control.checked
+        }
+    }
+
+    Text {
+        id: label
+        text: control.text
+        color: Theme.text
+        fontSize: Theme.fontSize
+        font.family: Theme.font
+        anchors.left: box.right
+        anchors.leftMargin: 12
+        anchors.verticalCenter: parent.verticalCenter
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onClicked: { control.checked = !control.checked; control.toggled() }
+    }
+}

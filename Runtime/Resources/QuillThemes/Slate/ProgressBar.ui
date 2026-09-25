@@ -1,0 +1,29 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// ProgressBar — Slate. Same API in every theme:
+//   value, from, to (real), position (real 0..1, read-only)
+// Use:  ProgressBar { width: 280; value: loader.progress }
+Rectangle {
+    id: control
+
+    property real value: 0
+    property real from: 0
+    property real to: 1
+    property real position: control.to > control.from ? Math.clamp((control.value - control.from) / (control.to - control.from), 0, 1) : 0
+
+    width: 240
+    height: 8
+    radius: height / 2
+    color: Theme.control
+    border.width: Theme.borderWidth
+    border.color: Theme.border
+
+    Rectangle {
+        width: Math.max(control.height, control.width * control.position)
+        height: control.height
+        radius: control.radius
+        color: Theme.accent
+        visible: control.position > 0
+    }
+}

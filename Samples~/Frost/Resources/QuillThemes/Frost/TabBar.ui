@@ -1,0 +1,40 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// TabBar — Frost: glass tabs in a row; the current one is lit.
+// Same API in every theme: model (list of strings), currentIndex, enabled, signal activated(int index)
+Row {
+    id: control
+
+    property var model: []
+    property int currentIndex: 0
+    property bool enabled: true
+    signal activated(int index)
+
+    spacing: 6
+    opacity: control.enabled ? 1 : 0.4
+
+    Repeater {
+        model: control.model
+
+        FrostPane {
+            width: Math.max(72, tabLabel.contentWidth + 32)
+            height: 38
+            corner: 19
+            interactive: true
+            enabled: control.enabled
+            active: index == control.currentIndex
+            restTint: "#ffffff0d"
+            onClicked: { control.currentIndex = index; control.activated(index) }
+
+            Text {
+                id: tabLabel
+                text: modelData
+                color: index == control.currentIndex ? Theme.text : Theme.textMuted
+                fontSize: Theme.fontSize
+                font.family: index == control.currentIndex ? Theme.titleFont : Theme.font
+                anchors.centerIn: parent
+            }
+        }
+    }
+}

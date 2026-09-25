@@ -1,0 +1,68 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// CheckBox — Pop: an inked box on a small hard shadow; checked, it fills pink with a white dot.
+// Same API in every theme: text, checked, enabled, signal toggled
+Item {
+    id: control
+
+    property string text: ""
+    property bool checked: false
+    property bool enabled: true
+    signal toggled
+
+    width: box.width + 3 + (control.text.length > 0 ? 12 + label.contentWidth : 0)
+    height: Math.max(box.height + 3, label.contentHeight)
+    opacity: control.enabled ? 1 : 0.45
+
+    property real pop: control.checked ? 1 : 0
+    Behavior on pop { SpringAnimation { spring: 7; damping: 0.3 } }
+
+    Rectangle {
+        x: 3
+        y: box.y + 3
+        width: box.width
+        height: box.height
+        radius: 7
+        color: Theme.border
+    }
+    Rectangle {
+        id: box
+        width: 24
+        height: 24
+        radius: 7
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.verticalCenterOffset: -1.5
+        color: control.checked ? Theme.accent : area.containsMouse ? Theme.controlHover : Theme.control
+        border.width: Theme.borderWidth
+        border.color: Theme.border
+
+        Rectangle {
+            width: 10 * control.pop
+            height: width
+            radius: width / 2
+            anchors.centerIn: parent
+            color: Theme.accentText
+            visible: width > 0.5
+        }
+    }
+
+    Text {
+        id: label
+        text: control.text
+        color: Theme.text
+        fontSize: Theme.fontSize
+        font.family: Theme.font
+        anchors.left: box.right
+        anchors.leftMargin: 15
+        anchors.verticalCenter: parent.verticalCenter
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onClicked: { control.checked = !control.checked; control.toggled() }
+    }
+}

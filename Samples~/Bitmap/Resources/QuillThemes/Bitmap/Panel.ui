@@ -1,0 +1,25 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Panel — Bitmap: a bevelled pixel block with a hard drop shadow.
+Item {
+    id: panel
+
+    width: 340
+    height: 200
+
+    PixelBlock {
+        x: 2 * Theme.pixel
+        y: 2 * Theme.pixel
+        width: panel.width
+        height: panel.height
+        color: "#0d0e1899"
+        outline: "#0d0e1899"
+        bevel: false
+    }
+    PixelBlock {
+        width: panel.width
+        height: panel.height
+        color: Theme.surface
+    }
+}

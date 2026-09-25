@@ -11,12 +11,13 @@ namespace Quill.Parsing
     public enum TokenType
     {
         Identifier, Number, String, Bool,
-        LBrace, RBrace, LParen, RParen,
+        LBrace, RBrace, LParen, RParen, LBracket, RBracket,
         Colon, Dot, Comma, Semicolon,
         Plus, Minus, Star, Slash, Percent,
         Less, Greater, LessEqual, GreaterEqual, EqualEqual, NotEqual,
-        And, Or, Not,
-        Assign, Question,
+        And, Or, Not, BitAnd, BitOr,
+        Assign, PlusAssign, MinusAssign, StarAssign, SlashAssign, PlusPlus, MinusMinus,
+        Question,
         EOF
     }
 
@@ -33,6 +34,8 @@ namespace Quill.Parsing
 
     /// <summary>
     /// Hand-written tokenizer for the Quill subset. Skips comments (// and /* */) and `import` lines.
+    /// Numbers may be decimal (with an optional exponent) or hex (<c>0xff</c>); <c>===</c>/<c>!==</c>
+    /// are accepted as plain <c>==</c>/<c>!=</c> for JavaScript habits.
     /// </summary>
     public sealed class Lexer
     {
@@ -119,9 +122,27 @@ namespace Quill.Parsing
         private Token ReadNumber()
         {
             int start = _pos;
+
+            // Hex literal: 0xFF
+            if (Cur == '0' && (Peek() == 'x' || Peek() == 'X'))
+            {
+                _pos += 2;
+                int hexStart = _pos;
+                while (_pos < _src.Length && Uri.IsHexDigit(Cur)) _pos++;
+                string hex = _src.Substring(hexStart, _pos - hexStart);
+                long.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hv);
+                return new Token { Type = TokenType.Number, Text = _src.Substring(start, _pos - start), Number = hv, Line = _line };
+            }
+
             while (_pos < _src.Length && (char.IsDigit(Cur) || Cur == '.')) _pos++;
+            // Exponent: 1e-3, 2.5E+4
+            if ((Cur == 'e' || Cur == 'E') && (char.IsDigit(Peek()) || ((Peek() == '-' || Peek() == '+') && char.IsDigit(Peek(2)))))
+            {
+                _pos += 2;
+                while (_pos < _src.Length && char.IsDigit(Cur)) _pos++;
+            }
             string text = _src.Substring(start, _pos - start);
-            double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var n);
+            double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var n);
             return new Token { Type = TokenType.Number, Text = text, Number = n, Line = _line };
         }
 
@@ -163,6 +184,7 @@ namespace Quill.Parsing
             int line = _line;
 
             Token Two(TokenType tt) { _pos += 2; return new Token { Type = tt, Text = $"{c}{n}", Line = line }; }
+            Token Three(TokenType tt) { _pos += 3; return new Token { Type = tt, Text = $"{c}{n}=", Line = line }; }
             Token One(TokenType tt) { _pos += 1; return new Token { Type = tt, Text = c.ToString(), Line = line }; }
 
             switch (c)
@@ -171,21 +193,27 @@ namespace Quill.Parsing
                 case '}': return One(TokenType.RBrace);
                 case '(': return One(TokenType.LParen);
                 case ')': return One(TokenType.RParen);
+                case '[': return One(TokenType.LBracket);
+                case ']': return One(TokenType.RBracket);
                 case ':': return One(TokenType.Colon);
                 case '.': return One(TokenType.Dot);
                 case ',': return One(TokenType.Comma);
                 case ';': return One(TokenType.Semicolon);
-                case '+': return One(TokenType.Plus);
-                case '-': return One(TokenType.Minus);
-                case '*': return One(TokenType.Star);
-                case '/': return One(TokenType.Slash);
+                case '+': return n == '+' ? Two(TokenType.PlusPlus) : n == '=' ? Two(TokenType.PlusAssign) : One(TokenType.Plus);
+                case '-': return n == '-' ? Two(TokenType.MinusMinus) : n == '=' ? Two(TokenType.MinusAssign) : One(TokenType.Minus);
+                case '*': return n == '=' ? Two(TokenType.StarAssign) : One(TokenType.Star);
+                case '/': return n == '=' ? Two(TokenType.SlashAssign) : One(TokenType.Slash);
                 case '%': return One(TokenType.Percent);
                 case '<': return n == '=' ? Two(TokenType.LessEqual) : One(TokenType.Less);
                 case '>': return n == '=' ? Two(TokenType.GreaterEqual) : One(TokenType.Greater);
-                case '=': return n == '=' ? Two(TokenType.EqualEqual) : One(TokenType.Assign);
-                case '!': return n == '=' ? Two(TokenType.NotEqual) : One(TokenType.Not);
-                case '&': return n == '&' ? Two(TokenType.And) : One(TokenType.Identifier);
-                case '|': return n == '|' ? Two(TokenType.Or) : One(TokenType.Identifier);
+                case '=':
+                    if (n == '=') return Peek(2) == '=' ? Three(TokenType.EqualEqual) : Two(TokenType.EqualEqual);
+                    return One(TokenType.Assign);
+                case '!':
+                    if (n == '=') return Peek(2) == '=' ? Three(TokenType.NotEqual) : Two(TokenType.NotEqual);
+                    return One(TokenType.Not);
+                case '&': return n == '&' ? Two(TokenType.And) : One(TokenType.BitAnd);
+                case '|': return n == '|' ? Two(TokenType.Or) : One(TokenType.BitOr);
                 case '?': return One(TokenType.Question);
                 default:
                     _pos++; // unknown char: skip to stay robust

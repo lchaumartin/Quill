@@ -1,0 +1,69 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// TabBar — Tome: bookmark tabs in Cinzel; the open one is vellum, the others darker and set back.
+// Same API in every theme: model (list of strings), currentIndex, enabled, signal activated(int index)
+Item {
+    id: control
+
+    property var model: []
+    property int currentIndex: 0
+    property bool enabled: true
+    signal activated(int index)
+
+    width: row.width
+    height: 40
+    opacity: control.enabled ? 1 : 0.45
+
+    Rectangle {
+        y: control.height - 2
+        width: control.width
+        height: 2
+        color: Theme.border
+    }
+
+    Row {
+        id: row
+        spacing: 4
+
+        Repeater {
+            model: control.model
+
+            Rectangle {
+                property bool current: index == control.currentIndex
+                width: tabLabel.contentWidth + 30
+                height: current ? 40 : 34
+                y: current ? 0 : 6
+                radius: 2
+                color: current ? Theme.surface : tabArea.containsMouse ? Theme.controlHover : Qt.darker(Theme.control, 1.06)
+                border.width: Theme.borderWidth
+                border.color: Theme.border
+
+                Rectangle {
+                    x: 2
+                    y: parent.height - 2
+                    width: parent.width - 4
+                    height: 2
+                    color: Theme.surface
+                    visible: parent.current
+                }
+                Text {
+                    id: tabLabel
+                    text: modelData
+                    color: parent.current ? Theme.accent : Theme.textMuted
+                    fontSize: 14
+                    font.family: Theme.titleFont
+                    font.letterSpacing: 1
+                    anchors.centerIn: parent
+                }
+                MouseArea {
+                    id: tabArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: control.enabled
+                    onClicked: { control.currentIndex = index; control.activated(index) }
+                }
+            }
+        }
+    }
+}

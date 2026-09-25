@@ -1,0 +1,64 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// TabBar — Arcade: Orbitron tabs; the current one gets a glowing cyan underline.
+// Same API in every theme: model (list of strings), currentIndex, enabled, signal activated(int index)
+Row {
+    id: control
+
+    property var model: []
+    property int currentIndex: 0
+    property bool enabled: true
+    signal activated(int index)
+
+    spacing: 4
+    opacity: control.enabled ? 1 : 0.35
+
+    Repeater {
+        model: control.model
+
+        Item {
+            width: tabLabel.contentWidth + 28
+            height: 38
+
+            Rectangle {
+                width: parent.width
+                height: parent.height
+                radius: Theme.radius
+                color: tabArea.containsMouse ? Theme.controlHover : Qt.alpha(Theme.controlHover, 0)
+            }
+            Text {
+                id: tabLabel
+                text: modelData
+                color: index == control.currentIndex ? Theme.accent : tabArea.containsMouse ? Theme.text : Theme.textMuted
+                fontSize: 13
+                font.family: Theme.titleFont
+                font.capitalization: Font.AllUppercase
+                font.letterSpacing: 2
+                anchors.centerIn: parent
+            }
+            Rectangle {
+                x: 8; y: parent.height - 8
+                width: parent.width - 16
+                height: 8
+                softness: 8
+                color: Qt.alpha(Theme.accent, 0.8 * Theme.glow)
+                visible: index == control.currentIndex
+            }
+            Rectangle {
+                x: 10; y: parent.height - 4
+                width: parent.width - 20
+                height: 2
+                color: Theme.accent
+                visible: index == control.currentIndex
+            }
+            MouseArea {
+                id: tabArea
+                anchors.fill: parent
+                hoverEnabled: true
+                enabled: control.enabled
+                onClicked: { control.currentIndex = index; control.activated(index) }
+            }
+        }
+    }
+}

@@ -1,0 +1,35 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Pebble — soft clay: warm pastels, round shapes, deep soft shadows and squishy, springy motion.
+// Made for casual and mobile games.
+QtObject {
+    property string name: "Pebble"
+    property string tagline: "Soft clay and pastels, for casual and mobile games."
+
+    property color background: "#f4ede6"
+    property color surface: "#fffaf5"
+    property color border: "#e7dbcf"
+    property color control: "#efe4d9"
+    property color controlHover: "#e8dacb"
+    property color accent: "#ff8a73"          // coral
+    property color accentText: "#ffffff"
+    property color text: "#4b3f39"
+    property color textMuted: "#9b8b80"
+
+    property real radius: 18
+    property real borderWidth: 0
+    property real padding: 26
+    property real spacing: 14
+
+    // Fredoka for titles, Nunito for text (SIL Open Font License: see the sample's Licenses folder)
+    property string font: "QuillThemes/Pebble/Fonts/Nunito-SemiBold"
+    property string titleFont: "QuillThemes/Pebble/Fonts/Fredoka-SemiBold"
+    property real fontSize: 16
+    property real titleSize: 40
+
+    property int duration: 200
+
+    // Pebble only: the colour of the soft shadows under things.
+    property color shadow: "#b49f8d66"
+}

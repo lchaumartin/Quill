@@ -7,79 +7,164 @@ using UnityEngine;
 namespace Quill
 {
     /// <summary>
-    /// Builds one combined glyph mesh for all Text elements using Unity's dynamic font atlas, drawn
-    /// with <c>Quill/Text</c>. Each Text is content-sized: its measured width/height are written back
-    /// to its properties so position anchors (e.g. centring) work off the real text extent.
+    /// Builds the glyph meshes for all Text elements using Unity's dynamic font atlases, drawn with
+    /// <c>Quill/Text</c>: one combined mesh per font in use (<c>font.family</c>). Lines come from
+    /// <see cref="TextLayout"/> (line breaks, wrapping, eliding) and are aligned inside the item's box.
+    /// The measured size is written back to <c>contentWidth</c> / <c>contentHeight</c> /
+    /// <c>lineCount</c>; a Text the document doesn't size takes that as its width/height (see
+    /// QuillEngine.SetupText), so anchors see the real extent.
     /// </summary>
     internal sealed class QuillTextLayer
     {
-        private readonly Font _font;
-        private readonly Material _material;
-        private readonly Mesh _mesh;
+        // One mesh + material + renderer per font.
+        private sealed class Batch
+        {
+            public Font Font;
+            public Material Material;
+            public Mesh Mesh;
+            public GameObject Go;
+            public readonly List<Vector3> Verts = new List<Vector3>();
+            public readonly List<Vector2> Uvs = new List<Vector2>();
+            public readonly List<Color32> Cols = new List<Color32>();
+            public readonly List<int> Tris = new List<int>();
+        }
 
-        private readonly List<Vector3> _verts = new List<Vector3>();
-        private readonly List<Vector2> _uvs = new List<Vector2>();
-        private readonly List<Color32> _cols = new List<Color32>();
-        private readonly List<int> _tris = new List<int>();
+        private readonly Transform _parent;
+        private readonly int _renderQueue;
+        private readonly Shader _shader;
+        private readonly Dictionary<Font, Batch> _batches = new Dictionary<Font, Batch>();
+        private readonly List<(QuillText text, Font font)> _items = new List<(QuillText, Font)>();
 
         private static readonly int IdMainTex = Shader.PropertyToID("_MainTex");
 
         public QuillTextLayer(Transform parent, int renderQueue)
         {
-            _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (_font == null) _font = Font.CreateDynamicFontFromOSFont("Arial", 16);
+            _parent = parent;
+            _renderQueue = renderQueue;
+            _shader = Shader.Find("Quill/Text");
+            if (_shader == null) Debug.LogError("[Quill] Shader 'Quill/Text' not found.");
+        }
 
-            var shader = Shader.Find("Quill/Text");
-            if (shader == null)
+        private static FontStyle StyleOf(QuillText t)
+        {
+            bool bold = t.Flag("font.bold", false), italic = t.Flag("font.italic", false);
+            return bold && italic ? FontStyle.BoldAndItalic : bold ? FontStyle.Bold : italic ? FontStyle.Italic : FontStyle.Normal;
+        }
+
+        // The displayed string: `text` with `font.capitalization` applied.
+        private static string TextOf(QuillText t)
+        {
+            string s = QuillConvert.ToStr(t.FindProperty("text")?.Raw);
+            if (string.IsNullOrEmpty(s)) return s;
+            switch ((int)t.Num("font.capitalization", 0f))
             {
-                Debug.LogError("[Quill] Shader 'Quill/Text' not found.");
-                return;
+                case 1: case 3: return s.ToUpperInvariant();   // AllUppercase; SmallCaps approximated
+                case 2: return s.ToLowerInvariant();
+                case 4:
+                {
+                    var chars = s.ToCharArray();
+                    for (int i = 0; i < chars.Length; i++)
+                        if (i == 0 || char.IsWhiteSpace(chars[i - 1])) chars[i] = char.ToUpperInvariant(chars[i]);
+                    return new string(chars);
+                }
+                default: return s;
             }
+        }
 
-            _material = new Material(shader) { hideFlags = HideFlags.HideAndDontSave, renderQueue = renderQueue };
-
-            QuillSurface.MakeLayer(parent, "Quill Text", out var filter, out var renderer);
-            _mesh = new Mesh { name = "Quill Text Mesh" };
-            _mesh.MarkDynamic();
-            filter.sharedMesh = _mesh;
-            renderer.sharedMaterial = _material;
+        private Batch BatchFor(Font font)
+        {
+            if (_batches.TryGetValue(font, out var b)) return b;
+            b = new Batch { Font = font };
+            b.Material = new Material(_shader) { hideFlags = HideFlags.HideAndDontSave, renderQueue = _renderQueue };
+            b.Go = QuillSurface.MakeLayer(_parent, "Quill Text (" + font.name + ")", out var filter, out var renderer);
+            b.Mesh = new Mesh { name = "Quill Text Mesh" };
+            b.Mesh.MarkDynamic();
+            filter.sharedMesh = b.Mesh;
+            renderer.sharedMaterial = b.Material;
+            _batches[font] = b;
+            return b;
         }
 
         public void Render(List<QuillText> texts, float w, float h)
         {
-            if (_font == null || _material == null || _mesh == null) return;
+            if (_shader == null) return;
 
-            _verts.Clear(); _uvs.Clear(); _cols.Clear(); _tris.Clear();
-
-            // Ensure every glyph we need is in the atlas before reading any metrics.
-            for (int i = 0; i < texts.Count; i++)
+            foreach (var b in _batches.Values)
             {
-                string s = QuillConvert.ToStr(texts[i].FindProperty("text")?.Raw);
-                if (string.IsNullOrEmpty(s)) continue;
-                int size = Mathf.Max(1, Mathf.RoundToInt(texts[i].Num("fontSize", 16f)));
-                _font.RequestCharactersInTexture(s, size, FontStyle.Normal);
+                b.Verts.Clear(); b.Uvs.Clear(); b.Cols.Clear(); b.Tris.Clear();
             }
 
+            // Resolve fonts, and make sure every glyph we need is in its atlas before reading any
+            // metrics (requesting can rebuild an atlas and invalidate earlier UVs, so it all happens
+            // up front).
+            _items.Clear();
             for (int i = 0; i < texts.Count; i++)
             {
                 var t = texts[i];
-                string s = QuillConvert.ToStr(t.FindProperty("text")?.Raw);
+                var font = QuillFonts.Get(QuillConvert.ToStr(t.FindProperty("font.family")?.Raw));
+                if (font == null) continue;
+                _items.Add((t, font));
+                string s = TextOf(t);
+                if (string.IsNullOrEmpty(s)) continue;
                 int size = Mathf.Max(1, Mathf.RoundToInt(t.Num("fontSize", 16f)));
+                font.RequestCharactersInTexture(s + "…", size, StyleOf(t));
+            }
+
+            for (int i = 0; i < _items.Count; i++)
+            {
+                var (t, font) = _items[i];
+                string s = TextOf(t);
+                int size = Mathf.Max(1, Mathf.RoundToInt(t.Num("fontSize", 16f)));
+                var style = StyleOf(t);
+                float spacing = t.Num("font.letterSpacing", 0f);
 
                 Color col = QuillConvert.ToColor(t.FindProperty("color")?.Raw);
                 float op = Mathf.Clamp01(t.EffectiveOpacity());
                 Color32 c32 = new Color(col.r, col.g, col.b, col.a * op);
 
-                float penX = t.AbsX();
-                float startX = penX;
-                float ascent = size * 0.8f;            // approximation; good enough for layout
-                float baseline = t.AbsY() + ascent;
+                float boxW = t.Num("width"), boxH = t.Num("height");
+                float maxW = t.HasExplicitWidth ? boxW : float.PositiveInfinity;
+                var layout = TextLayout.Layout(s, maxW, (int)t.Num("wrapMode"), (int)t.Num("elide"),
+                    ch => (font.GetCharacterInfo(ch, out var info, size, style) ? info.advance : 0f) + spacing);
 
-                if (!string.IsNullOrEmpty(s))
+                float lineH = size * Mathf.Max(0.1f, t.Num("lineHeight", 1f));
+                float contentH = lineH * layout.Lines.Count;
+
+                // Content size -> implicit width/height and anchors (1-frame latency is fine). Letter
+                // spacing goes between characters, so the last one's is not part of the extent.
+                t.Property("contentWidth").SetValue((double)Mathf.Max(0f, layout.Width - (layout.Width > 0 ? spacing : 0f)));
+                t.Property("contentHeight").SetValue((double)contentH);
+                t.Property("lineCount").SetValue((double)layout.Lines.Count);
+
+                if (string.IsNullOrEmpty(s)) continue;
+                var batch = BatchFor(font);
+
+                int hAlign = (int)t.Num("horizontalAlignment", 1f);
+                int vAlign = (int)t.Num("verticalAlignment", 32f);
+                float x0 = t.AbsX(), y0 = t.AbsY();
+                if (t.HasExplicitHeight)
                 {
-                    for (int ci = 0; ci < s.Length; ci++)
+                    if ((vAlign & 64) != 0) y0 += boxH - contentH;              // AlignBottom
+                    else if ((vAlign & 128) != 0) y0 += (boxH - contentH) * 0.5f; // AlignVCenter
+                }
+
+                float ascent = size * 0.8f;            // approximation; good enough for layout
+                for (int li = 0; li < layout.Lines.Count; li++)
+                {
+                    var line = layout.Lines[li];
+                    float lineW = line.Width - (line.Text.Length > 0 ? spacing : 0f);
+                    float penX = x0;
+                    if (t.HasExplicitWidth)
                     {
-                        if (!_font.GetCharacterInfo(s[ci], out var info, size, FontStyle.Normal))
+                        if ((hAlign & 2) != 0) penX += boxW - lineW;               // AlignRight
+                        else if ((hAlign & 4) != 0) penX += (boxW - lineW) * 0.5f; // AlignHCenter
+                    }
+                    float baseline = y0 + li * lineH + (lineH - size) * 0.5f + ascent;
+
+                    string ls = line.Text;
+                    for (int ci = 0; ci < ls.Length; ci++)
+                    {
+                        if (!font.GetCharacterInfo(ls[ci], out var info, size, style))
                             continue;
 
                         float left = penX + info.minX;
@@ -87,45 +172,93 @@ namespace Quill
                         float top = baseline - info.maxY;     // maxY is up from baseline
                         float bottom = baseline - info.minY;
 
-                        int b = _verts.Count;
-                        _verts.Add(QuillSurface.ToClip(left, top, w, h));      // TL
-                        _verts.Add(QuillSurface.ToClip(right, top, w, h));     // TR
-                        _verts.Add(QuillSurface.ToClip(right, bottom, w, h));  // BR
-                        _verts.Add(QuillSurface.ToClip(left, bottom, w, h));   // BL
+                        var verts = batch.Verts;
+                        int b = verts.Count;
+                        verts.Add(QuillSurface.ToClip(left, top, w, h));      // TL
+                        verts.Add(QuillSurface.ToClip(right, top, w, h));     // TR
+                        verts.Add(QuillSurface.ToClip(right, bottom, w, h));  // BR
+                        verts.Add(QuillSurface.ToClip(left, bottom, w, h));   // BL
 
-                        _uvs.Add(info.uvTopLeft);
-                        _uvs.Add(info.uvTopRight);
-                        _uvs.Add(info.uvBottomRight);
-                        _uvs.Add(info.uvBottomLeft);
+                        batch.Uvs.Add(info.uvTopLeft);
+                        batch.Uvs.Add(info.uvTopRight);
+                        batch.Uvs.Add(info.uvBottomRight);
+                        batch.Uvs.Add(info.uvBottomLeft);
 
-                        _cols.Add(c32); _cols.Add(c32); _cols.Add(c32); _cols.Add(c32);
+                        batch.Cols.Add(c32); batch.Cols.Add(c32); batch.Cols.Add(c32); batch.Cols.Add(c32);
 
-                        _tris.Add(b); _tris.Add(b + 1); _tris.Add(b + 2);
-                        _tris.Add(b); _tris.Add(b + 2); _tris.Add(b + 3);
+                        batch.Tris.Add(b); batch.Tris.Add(b + 1); batch.Tris.Add(b + 2);
+                        batch.Tris.Add(b); batch.Tris.Add(b + 2); batch.Tris.Add(b + 3);
 
-                        penX += info.advance;
+                        penX += info.advance + spacing;
                     }
                 }
-
-                // Content size -> feed anchors (1-frame latency is fine).
-                t.Property("width").SetValue((double)(penX - startX));
-                t.Property("height").SetValue((double)size);
             }
 
-            _mesh.Clear();
-            _mesh.SetVertices(_verts);
-            _mesh.SetUVs(0, _uvs);
-            _mesh.SetColors(_cols);
-            _mesh.SetTriangles(_tris, 0);
-            _mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e5f);
-
-            _material.SetTexture(IdMainTex, _font.material.mainTexture);
+            foreach (var b in _batches.Values)
+            {
+                b.Mesh.Clear();
+                b.Mesh.SetVertices(b.Verts);
+                b.Mesh.SetUVs(0, b.Uvs);
+                b.Mesh.SetColors(b.Cols);
+                b.Mesh.SetTriangles(b.Tris, 0);
+                b.Mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e5f);
+                b.Material.SetTexture(IdMainTex, b.Font.material.mainTexture);
+            }
         }
 
         public void Dispose()
         {
-            if (_material != null) Object.Destroy(_material);
-            if (_mesh != null) Object.Destroy(_mesh);
+            foreach (var b in _batches.Values)
+            {
+                if (b.Material != null) Object.Destroy(b.Material);
+                if (b.Mesh != null) Object.Destroy(b.Mesh);
+            }
+            _batches.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Resolves a Text's <c>font.family</c> to a Unity <see cref="Font"/>, cached by name:
+    ///   ""                     → Unity's built-in font (LegacyRuntime)
+    ///   "Fonts/MyFont"         → a font asset under any Resources folder, if one exists at that path
+    ///   "Georgia, serif"       → installed fonts, first found wins (the rest are fallbacks)
+    /// Installed fonts vary by platform, so themes list a few names and ship-ready projects put a
+    /// font in Resources and name that instead.
+    /// </summary>
+    public static class QuillFonts
+    {
+        private static readonly Dictionary<string, Font> _cache = new Dictionary<string, Font>();
+        private static Font _default;
+
+        public static Font Default
+        {
+            get
+            {
+                if (_default == null)
+                {
+                    _default = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    if (_default == null) _default = Font.CreateDynamicFontFromOSFont("Arial", 16);
+                }
+                return _default;
+            }
+        }
+
+        public static Font Get(string family)
+        {
+            if (string.IsNullOrWhiteSpace(family)) return Default;
+            if (_cache.TryGetValue(family, out var cached) && cached != null) return cached;
+
+            Font font = Resources.Load<Font>(family.Trim());
+            if (font == null)
+            {
+                var names = family.Split(',');
+                for (int i = 0; i < names.Length; i++) names[i] = names[i].Trim();
+                font = Font.CreateDynamicFontFromOSFont(names, 16);
+                if (font != null) font.hideFlags = HideFlags.DontSave;
+            }
+            if (font == null) font = Default;
+            _cache[family] = font;
+            return font;
         }
     }
 }

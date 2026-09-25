@@ -1,0 +1,76 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Slider — Frost: three glass panes that never overlap — the lit run, a round knob and the rest of
+// the track. While held, the knob swells into a clear magnifying lens.
+// Same API in every theme: value, from, to, step, enabled, position / pressed (read-only), signal moved
+Item {
+    id: control
+
+    property real value: 0
+    property real from: 0
+    property real to: 1
+    property real step: 0
+    property bool enabled: true
+    property bool pressed: area.pressed
+    property real position: control.to > control.from ? Math.clamp((control.value - control.from) / (control.to - control.from), 0, 1) : 0
+    signal moved
+
+    width: 240
+    height: 32
+    opacity: control.enabled ? 1 : 0.4
+
+    property real knob: 26
+    property real trackH: 10
+    property real gap: 4
+    property real knobX: control.knob / 2 + control.position * (control.width - control.knob)
+    property real grab: area.pressed ? 1 : 0
+    Behavior on grab { SpringAnimation { spring: 5; damping: 0.35 } }
+    property real knobSize: control.knob + (area.containsMouse ? 2 : 0) + 10 * control.grab
+
+    function setFromX(px) {
+        var t = Math.clamp((px - control.knob / 2) / Math.max(1, control.width - control.knob), 0, 1)
+        var v = control.from + t * (control.to - control.from)
+        if (control.step > 0) v = control.from + Math.round((v - control.from) / control.step) * control.step
+        if (v != control.value) { control.value = v; control.moved() }
+    }
+
+    FrostPane {
+        width: Math.max(0, control.knobX - control.knobSize / 2 - control.gap)
+        height: control.trackH
+        y: (control.height - height) / 2
+        corner: height / 2
+        visible: width > 1
+        active: true
+    }
+
+    FrostPane {
+        id: rest
+        x: control.knobX + control.knobSize / 2 + control.gap
+        width: Math.max(0, control.width - x)
+        height: control.trackH
+        y: (control.height - height) / 2
+        corner: height / 2
+        visible: width > 1
+    }
+
+    FrostPane {
+        x: control.knobX - control.knobSize / 2
+        y: (control.height - height) / 2
+        width: control.knobSize
+        height: control.knobSize
+        corner: control.knobSize / 2
+        lens: 1 + 1.5 * control.grab
+        active: true
+        activeTint: area.pressed ? "#ffffff1f" : "#f8faffeb"
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onPressed: control.setFromX(mouse.x)
+        onPositionChanged: { if (area.pressed) control.setFromX(mouse.x) }
+    }
+}

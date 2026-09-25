@@ -1,0 +1,10 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Panel — Frost: a large glass card. Same API in every theme: size it, put children in it.
+FrostPane {
+    width: 340
+    height: 200
+    corner: Theme.radius * 1.3
+    restTint: Theme.surface
+}

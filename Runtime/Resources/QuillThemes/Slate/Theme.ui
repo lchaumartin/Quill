@@ -1,0 +1,38 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Slate — the built-in theme: clean, flat and quiet. The default for every Quill Document.
+//
+// This file is the theme's palette. Documents and controls read it through the global `Theme`
+// (`color: Theme.accent`), and it stays live: assign `Theme.accent = "#ff5a5f"` at runtime and every
+// control follows. Every theme declares the same properties below (it may add its own).
+QtObject {
+    property string name: "Slate"
+    property string tagline: "Clean and flat, for settings screens, tools and simulations."
+
+    // Colours
+    property color background: "#0e1015"     // behind everything (the page)
+    property color surface: "#171a21"        // panels
+    property color border: "#2a303c"         // panel and control outlines
+    property color control: "#222731"        // button, track and box fill
+    property color controlHover: "#2b313d"
+    property color accent: "#4f8cff"
+    property color accentText: "#ffffff"     // text on the accent colour
+    property color text: "#e7eaf0"
+    property color textMuted: "#8b93a5"
+
+    // Shape and spacing
+    property real radius: 8
+    property real borderWidth: 1
+    property real padding: 24                // inside panels
+    property real spacing: 14                // between stacked controls
+
+    // Type: "" is Unity's built-in font; otherwise a font under Resources, or installed font names.
+    property string font: ""
+    property string titleFont: ""
+    property real fontSize: 15
+    property real titleSize: 30
+
+    // Motion: hover / press / toggle transitions, in ms.
+    property int duration: 140
+}

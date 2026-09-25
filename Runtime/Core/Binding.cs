@@ -30,6 +30,12 @@ namespace Quill
             _expr = expr;
         }
 
+        /// <summary>The expression this binding evaluates (states re-install it after a state ends).</summary>
+        public Func<object> Expression => _expr;
+
+        /// <summary>True once the binding was replaced; it never evaluates again.</summary>
+        public bool IsDetached => _detached;
+
         // --- Automatic dependency tracking ------------------------------------------------------
 
         [ThreadStatic] private static Stack<Binding> _evalStack;

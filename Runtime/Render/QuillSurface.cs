@@ -12,7 +12,8 @@ namespace Quill
     ///
     ///   1. Rectangles  — one full-screen SDF pass (rounded boxes + borders).   queue 4000
     ///   2. Images      — one textured quad per Image element.                   queue 4001
-    ///   3. Text        — one combined glyph mesh per font.                      queue 4002
+    ///   3. Effects     — one quad per ShaderEffect, one queue each, tree order. queue 4002–4097
+    ///   4. Text        — one combined glyph mesh per font.                      queue 4100
     ///
     /// Each frame the surface makes the root fill it, flushes pending bindings, collects the visible
     /// items in tree order, and hands each layer its slice.
@@ -77,8 +78,8 @@ namespace Quill
 
             _rects = new QuillRectLayer(t, 4000);
             _images = new QuillImageLayer(t, 4001);
-            _effects = new QuillShaderEffectLayer(t, 4001);
-            _text = new QuillTextLayer(t, 4002);
+            _effects = new QuillShaderEffectLayer(t, 4002);
+            _text = new QuillTextLayer(t, 4100);
 
             _layerRoot.SetActive(_visible);
         }
@@ -97,8 +98,8 @@ namespace Quill
             }
 
             // Read the pointer in surface pixels (top-left origin) and tick the engine.
-            ReadPointer(out float px, out float py, out bool down);
-            Engine.Update(Time.deltaTime, px, py, down);
+            ReadPointer(out float px, out float py, out bool down, out float wheelX, out float wheelY);
+            Engine.Update(Time.deltaTime, px, py, down, wheelX, wheelY);
 
             Engine.CollectVisuals(_visuals);
             _rectList.Clear(); _imageList.Clear(); _effectList.Clear(); _textList.Clear();
@@ -119,10 +120,15 @@ namespace Quill
             _text.Render(_textList, w, h);
         }
 
+        /// <summary>Wheel units per notch handed to Quill (QML's angleDelta convention).</summary>
+        private const float WheelNotch = 120f;
+
         // Reads the mouse from whichever input backend is enabled. Y is flipped to top-left origin.
-        private static void ReadPointer(out float px, out float py, out bool down)
+        // The wheel is reported in QML angle-delta units (120 per notch, +y = away from the user).
+        private static void ReadPointer(out float px, out float py, out bool down, out float wheelX, out float wheelY)
         {
             float mx = 0, my = 0; down = false;
+            wheelX = 0; wheelY = 0;
 #if ENABLE_INPUT_SYSTEM
             var mouse = UnityEngine.InputSystem.Mouse.current;
             if (mouse != null)
@@ -130,11 +136,20 @@ namespace Quill
                 var p = mouse.position.ReadValue();
                 mx = p.x; my = p.y;
                 down = mouse.leftButton.isPressed;
+                // With the Input System's default (uniform) scroll behaviour one notch reads as 1;
+                // older settings report raw platform units (±120 on Windows) — pass those through.
+                var sc = mouse.scroll.ReadValue();
+                float k = Mathf.Abs(sc.x) > 10f || Mathf.Abs(sc.y) > 10f ? 1f : WheelNotch;
+                wheelX = sc.x * k;
+                wheelY = sc.y * k;
             }
 #elif ENABLE_LEGACY_INPUT_MANAGER
             var p = Input.mousePosition;
             mx = p.x; my = p.y;
             down = Input.GetMouseButton(0);
+            var sc = Input.mouseScrollDelta;
+            wheelX = sc.x * WheelNotch;
+            wheelY = sc.y * WheelNotch;
 #endif
             px = mx;
             py = Mathf.Max(1, Screen.height) - my;

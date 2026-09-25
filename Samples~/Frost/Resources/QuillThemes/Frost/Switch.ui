@@ -1,0 +1,58 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Switch — Frost: a glass track that fills with the accent, and a bright glass knob.
+// Same API in every theme: text, checked, enabled, signal toggled
+Item {
+    id: control
+
+    property string text: ""
+    property bool checked: false
+    property bool enabled: true
+    signal toggled
+
+    width: track.width + (control.text.length > 0 ? 12 + label.contentWidth : 0)
+    height: Math.max(track.height, label.contentHeight)
+    opacity: control.enabled ? 1 : 0.4
+
+    property real position: control.checked ? 1 : 0
+    Behavior on position { SpringAnimation { spring: 4; damping: 0.38 } }
+
+    FrostPane {
+        id: track
+        width: 48
+        height: 28
+        corner: 14
+        anchors.verticalCenter: parent.verticalCenter
+        active: control.checked
+        hot: area.containsMouse
+
+        FrostPane {
+            width: 22
+            height: 22
+            corner: 11
+            x: 3 + control.position * (track.width - width - 6)
+            anchors.verticalCenter: parent.verticalCenter
+            restTint: "#f8faffeb"
+        }
+    }
+
+    Text {
+        id: label
+        text: control.text
+        color: Theme.text
+        fontSize: Theme.fontSize
+        font.family: Theme.font
+        anchors.left: track.right
+        anchors.leftMargin: 12
+        anchors.verticalCenter: parent.verticalCenter
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onClicked: { control.checked = !control.checked; control.toggled() }
+    }
+}

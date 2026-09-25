@@ -8,30 +8,28 @@ namespace Quill
 {
     /// <summary>
     /// Loads Quill text, instantiates the element tree, wires reactive bindings, and drives the
-    /// dirty-binding queue. This is the public entry point most code uses.
+    /// dirty-binding queue, animations, timers and input. This is the public entry point most code
+    /// uses.
     ///
     /// Instantiation is two-pass: first every object is created and every id registered, then
     /// bindings are attached. That ordering lets a binding reference an id declared later in the
-    /// file without the resolution failing.
+    /// file without the resolution failing. The same pipeline builds Repeater delegates created at
+    /// runtime (see QuillEngine.Build.cs).
     /// </summary>
-    public sealed class QuillEngine
+    public sealed partial class QuillEngine
     {
         public QuillItem Root { get; private set; }
 
         private readonly Dictionary<string, QuillObject> _ids = new Dictionary<string, QuillObject>();
         private readonly Dictionary<string, ObjectNode> _components = new Dictionary<string, ObjectNode>();
         private readonly List<(ObjectNode node, QuillItem obj)> _pairs = new List<(ObjectNode, QuillItem)>();
-        private readonly List<QuillAnimation> _animations = new List<QuillAnimation>();
-        private readonly List<QuillMouseArea> _mouseAreas = new List<QuillMouseArea>();
         private readonly Queue<Binding> _dirty = new Queue<Binding>();
 
-        // Pointer state.
-        private QuillMouseArea _hovered, _grabber;
-        private bool _wasDown;
-        private double _ptrX = double.NaN, _ptrY = double.NaN;
+        /// <summary>Seconds since the document was loaded (engine time; drives timers and double-clicks).</summary>
+        public double Time { get; private set; }
 
         public QuillObject FindId(string id)
-            => _ids.TryGetValue(id, out var o) ? o : null;
+            => id != null && _ids.TryGetValue(id, out var o) ? o : null;
 
         // ---- C# interop: read/write values, subscribe to changes and signals ------------------
 
@@ -89,6 +87,32 @@ namespace Quill
             obj.Connect(signal, callback);
         }
 
+        /// <summary>Subscribe C# to a Quill signal and receive its arguments, e.g. `moved(real value)`.</summary>
+        public void Connect(string id, string signal, System.Action<object[]> callback)
+        {
+            var obj = FindId(id);
+            if (obj == null)
+            {
+                UnityEngine.Debug.LogWarning($"[Quill] Connect: no element with id '{id}' (call after LoadFromSource).");
+                return;
+            }
+            obj.Connect(signal, callback);
+        }
+
+        /// <summary>Call a Quill <c>function</c> (or built-in method) on a document-level id from C#.</summary>
+        public object Invoke(string id, string function, params object[] args)
+        {
+            var obj = FindId(id);
+            if (obj == null)
+            {
+                UnityEngine.Debug.LogWarning($"[Quill] Invoke: no element with id '{id}'.");
+                return null;
+            }
+            var result = CallMethod(obj, function, args ?? new object[0]);
+            Flush();
+            return result;
+        }
+
         /// <summary>
         /// Register a reusable component type (one per .ui file). After this, the document can use
         /// <paramref name="typeName"/> like a built-in element (e.g. <c>Slider { value: 0.5 }</c>).
@@ -96,6 +120,11 @@ namespace Quill
         /// </summary>
         public void RegisterComponent(string typeName, string source)
         {
+            if (typeName == ThemeName)
+            {
+                SetTheme(source);
+                return;
+            }
             try { _components[typeName] = Parser.Parse(source); }
             catch (System.Exception e)
             {
@@ -103,418 +132,194 @@ namespace Quill
             }
         }
 
+        /// <summary>The global the theme palette is exposed as (<c>Theme.accent</c>, <c>Theme.radius</c>…).</summary>
+        public const string ThemeName = "Theme";
+
+        private ObjectNode _themeNode;
+
+        /// <summary>
+        /// Set the theme palette: a small document whose root declares the theme's properties
+        /// (<c>QtObject { property color accent: "#3a86ff" … }</c>). Every document and component can
+        /// read them through the global <c>Theme</c> — <c>color: Theme.accent</c> — and they stay
+        /// reactive, so palette properties may bind to each other. A file named <c>Theme.ui</c> passed to
+        /// <see cref="RegisterComponent"/> lands here, so registering a theme folder sets both its
+        /// controls and its palette. Call before <see cref="LoadFromSource"/>.
+        /// </summary>
+        public void SetTheme(string source)
+        {
+            try { _themeNode = source != null ? Parser.Parse(source) : null; }
+            catch (System.Exception e)
+            {
+                UnityEngine.Debug.LogWarning($"[Quill] Theme failed to parse: {e.Message}");
+            }
+        }
+
         /// <summary>Parse + instantiate a Quill document from source text.</summary>
         public void LoadFromSource(string source)
         {
-            _ids.Clear();
-            _pairs.Clear();
-            _animations.Clear();
-            _mouseAreas.Clear();
-            _hovered = _grabber = null;
-            _wasDown = false;
-            _dirty.Clear();
+            ResetState();
+            RegisterBuiltins();   // Easing.*, Animation.Infinite, Text.*, Qt.* must resolve during wiring
 
-            RegisterBuiltins();   // Easing.* and Animation.Infinite must resolve during wiring
+            // The theme palette: built like any object, but outside the tree (never drawn), and
+            // registered as a global so every scope — components included — resolves `Theme`.
+            if (_themeNode != null)
+                _ids[ThemeName] = Instantiate(_themeNode, null, -1);
 
             var rootNode = Parser.Parse(source);
-            Root = Instantiate(rootNode, null);
-            SetupAnchorLines();   // anchor-line props must exist before bindings/resolution read them
-            WireBindings();       // attach document bindings (incl. anchors.* inputs)
-            SetupPositioners();   // Row/Column/Grid position their children
-            ResolveAnchors();     // derive x/y/width/height from any declared anchors
-            SetupHandlers();      // compile MouseArea signal handlers
-            Flush();
+            Root = Instantiate(rootNode, null, -1);
+            BuildRange(0);
         }
 
-        /// <summary>Pseudo-objects so Quill can write `Easing.InOutQuad` and `Animation.Infinite`.</summary>
+        /// <summary>Pseudo-objects for enums and constants: `Easing.InOutQuad`, `Text.AlignHCenter`, …</summary>
         private void RegisterBuiltins()
         {
-            var easing = new QuillObject { TypeName = "Easing" };
-            foreach (var name in new[]
+            QuillObject MakeEnum(string name, params (string, object)[] values)
             {
-                "Linear", "InQuad", "OutQuad", "InOutQuad", "InCubic", "OutCubic",
-                "InOutCubic", "InSine", "OutSine", "InOutSine", "OutBack"
-            })
-                easing.Property(name).SetValue(name);
+                var o = new QuillObject { TypeName = name };
+                foreach (var (k, v) in values) o.Property(k).SetValue(v);
+                _ids[name] = o;
+                return o;
+            }
+
+            var easing = new QuillObject { TypeName = "Easing" };
+            foreach (var name in Easing.AllNames()) easing.Property(name).SetValue(name);
             _ids["Easing"] = easing;
 
-            var anim = new QuillObject { TypeName = "Animation" };
-            anim.Property("Infinite").SetValue(-1.0);
-            _ids["Animation"] = anim;
-
+            MakeEnum("Animation", ("Infinite", -1.0));
             // Math.* functions are handled by the expression evaluator; PI/E are constants.
-            var math = new QuillObject { TypeName = "Math" };
-            math.Property("PI").SetValue(System.Math.PI);
-            math.Property("E").SetValue(System.Math.E);
-            _ids["Math"] = math;
-        }
+            MakeEnum("Math", ("PI", System.Math.PI), ("E", System.Math.E), ("SQRT2", System.Math.Sqrt(2)),
+                         ("LN2", System.Math.Log(2)), ("LN10", System.Math.Log(10)));
 
-        private void SetupPositioners()
-        {
-            foreach (var (_, obj) in _pairs)
-                Positioners.Setup(this, obj);
-        }
-
-        // ---- Signal handlers (any object) ------------------------------------------------------
-
-        private void SetupHandlers()
-        {
-            foreach (var (node, obj) in _pairs)
-                foreach (var prop in node.Properties)
-                    if (prop.Handler != null)
-                        obj.Handlers[prop.Name] = CompileHandler(obj, prop.Handler);
-        }
-
-        private System.Action CompileHandler(QuillObject owner, List<HandlerStmt> stmts)
-        {
-            return () =>
+            var align = new (string, object)[]
             {
-                var ctx = new EvalContext(this, owner);
-                for (int i = 0; i < stmts.Count; i++)
-                {
-                    switch (stmts[i])
-                    {
-                        case AssignStmt a:
-                            var target = ResolveLValue(owner, a.Path);
-                            if (target != null) target.SetValue(a.Value.Eval(ctx));
-                            break;
-                        case CallStmt c:
-                            EmitSignal(owner, c.Path);
-                            break;
-                    }
-                }
+                ("AlignLeft", 1.0), ("AlignRight", 2.0), ("AlignHCenter", 4.0), ("AlignJustify", 8.0),
+                ("AlignTop", 32.0), ("AlignBottom", 64.0), ("AlignVCenter", 128.0), ("AlignCenter", 132.0),
             };
-        }
-
-        // `parent.clicked()` -> emit "clicked" on the object the path resolves to (before the call).
-        private void EmitSignal(QuillObject self, string[] path)
-        {
-            string sig = path[path.Length - 1];
-            QuillObject target = self;
-            if (path.Length > 1)
+            var text = MakeEnum("Text", align);
+            foreach (var (k, v) in new (string, object)[]
             {
-                target = ResolveObject(self, path[0]);
-                for (int i = 1; i < path.Length - 1 && target != null; i++)
-                    target = target.FindProperty(path[i])?.Raw as QuillObject;
-            }
-            target?.Emit("on" + char.ToUpperInvariant(sig[0]) + sig.Substring(1));
+                ("NoWrap", 0.0), ("WordWrap", 1.0), ("WrapAnywhere", 3.0), ("Wrap", 4.0),
+                ("ElideNone", 0.0), ("ElideLeft", 1.0), ("ElideMiddle", 2.0), ("ElideRight", 3.0),
+            })
+                text.Property(k).SetValue(v);
+
+            var qt = MakeEnum("Qt", align);
+            foreach (var (k, v) in new (string, object)[]
+            {
+                ("LeftButton", 1.0), ("RightButton", 2.0), ("MiddleButton", 4.0),
+                ("Horizontal", 1.0), ("Vertical", 2.0),
+            })
+                qt.Property(k).SetValue(v);
+
+            MakeEnum("Drag", ("XAxis", 1.0), ("YAxis", 2.0), ("XAndYAxis", 3.0));
+            MakeEnum("Font", ("MixedCase", 0.0), ("AllUppercase", 1.0), ("AllLowercase", 2.0),
+                             ("SmallCaps", 3.0), ("Capitalize", 4.0));
         }
 
-        // Resolve the property an assignment writes to: `name`, `id.name`, or `parent.name`.
-        private QuillProperty ResolveLValue(QuillObject self, string[] path)
+        // ---- Functions, methods, signals -------------------------------------------------------
+
+        private int _callDepth;
+
+        /// <summary>
+        /// `obj.name(args)`: a declared <c>function</c>, else a built-in method (<c>anim.start()</c>),
+        /// else a signal emit (<c>control.clicked()</c>, <c>slider.moved(0.5)</c>).
+        /// </summary>
+        public object CallMethod(QuillObject obj, string name, object[] args)
         {
-            if (path.Length == 1)
-                return self.FindPropertyInScope(path[0]) ?? self.Property(path[0]);
-
-            QuillObject obj = ResolveObject(self, path[0]);
-            for (int i = 1; i < path.Length - 1 && obj != null; i++)
-                obj = obj.FindProperty(path[i])?.Raw as QuillObject;
-
-            return obj?.Property(path[path.Length - 1]);
+            if (obj == null) return null;
+            if (obj.Functions.TryGetValue(name, out var fn)) return InvokeFunction(obj, fn, args);
+            if (obj.TryInvokeMethod(this, name, args, out var result)) return result;
+            obj.Emit(QuillObject.HandlerKey(name), args);
+            return null;
         }
 
-        // Resolve the first segment of a path to an object: `parent`, a local id, or a global id.
-        private QuillObject ResolveObject(QuillObject self, string name)
+        /// <summary>A bare `name(args)`: the nearest function or signal of that name in lexical scope.</summary>
+        public bool TryCallScopedFunction(QuillObject self, string name, object[] args, out object result)
         {
-            if (name == "parent") return self.Parent;
             for (var o = self; o != null; o = o.Parent)
-                if (o.LocalIds != null && o.LocalIds.TryGetValue(name, out var local))
-                    return local;
-            return FindId(name);
-        }
-
-        private void SetupAnchorLines()
-        {
-            // Parent-first (the order items were added to _pairs) so a child's lines can read its
-            // parent's lines as it is created.
-            foreach (var (_, obj) in _pairs)
-                Anchors.SetupLines(this, obj);
-        }
-
-        private void ResolveAnchors()
-        {
-            foreach (var (_, obj) in _pairs)
-                Anchors.Resolve(this, obj);
-        }
-
-        private QuillItem Instantiate(ObjectNode node, QuillItem parent)
-        {
-            // A registered component type expands into its own tree.
-            if (_components.ContainsKey(node.TypeName))
-                return InstantiateComponent(node, parent);
-
-            var obj = QuillTypeRegistry.Create(node.TypeName);
-            obj.OnProperty = node.OnProperty;
-
-            parent?.AddChild(obj);            // attach first so id registration sees the scope
-            RegisterIdAndCollect(node, obj);
-            DeclareProperties(node, obj);
-            _pairs.Add((node, obj));
-            InstantiateChildren(node, obj);
-            return obj;
-        }
-
-        /// <summary>
-        /// Instantiate a component instance: build the component's internal tree in its own id scope,
-        /// then apply the use-site's id, property overrides, and extra children onto the root.
-        /// </summary>
-        private QuillItem InstantiateComponent(ObjectNode useSite, QuillItem parent)
-        {
-            var compNode = _components[useSite.TypeName];
-
-            var root = QuillTypeRegistry.Create(compNode.TypeName);
-            root.LocalIds = new Dictionary<string, QuillObject>();   // component-private id scope
-            root.OnProperty = useSite.OnProperty;
-            if (root is QuillAnimation a2) _animations.Add(a2);
-            if (root is QuillMouseArea m2) _mouseAreas.Add(m2);
-
-            parent?.AddChild(root);            // attach first so the use-site id resolves to the outer scope
-
-            // The component's own root id lives in its local scope; the use-site id in the outer scope.
-            if (!string.IsNullOrEmpty(compNode.Id)) root.LocalIds[compNode.Id] = root;
-            root.Id = useSite.Id;
-            if (!string.IsNullOrEmpty(useSite.Id)) RegisterId(root, useSite.Id);
-
-            // Declared properties from the component (its public API) and any added at the use-site.
-            DeclareProperties(compNode, root);
-            DeclareProperties(useSite, root);
-
-            // Component internals wire first (defaults), then use-site overrides win.
-            _pairs.Add((compNode, root));
-            _pairs.Add((useSite, root));
-
-            InstantiateChildren(compNode, root);   // internal tree (ids -> root.LocalIds)
-            InstantiateChildren(useSite, root);    // children added at the use-site
-            return root;
-        }
-
-        private void InstantiateChildren(ObjectNode node, QuillItem obj)
-        {
-            foreach (var child in node.Children)
             {
-                if (child.TypeName == "Repeater")
-                    ExpandRepeater(child, obj);
-                else
-                    Instantiate(child, obj);
-            }
-        }
-
-        private void RegisterIdAndCollect(ObjectNode node, QuillItem obj)
-        {
-            obj.Id = node.Id;
-            if (!string.IsNullOrEmpty(node.Id)) RegisterId(obj, node.Id);
-            if (obj is QuillAnimation anim) _animations.Add(anim);
-            if (obj is QuillMouseArea area) _mouseAreas.Add(area);
-        }
-
-        // Register an id in the nearest enclosing component scope, or globally if there is none.
-        private void RegisterId(QuillObject obj, string id)
-        {
-            for (var o = obj.Parent; o != null; o = o.Parent)
-                if (o.LocalIds != null) { o.LocalIds[id] = obj; return; }
-            _ids[id] = obj;
-        }
-
-        // Create declared properties up-front with type defaults, so scope resolution sees them
-        // before any binding runs.
-        private static void DeclareProperties(ObjectNode node, QuillItem obj)
-        {
-            foreach (var prop in node.Properties)
-                if (prop.IsDeclaration)
-                    obj.Property(prop.Name).SetValue(DefaultForType(prop.DeclaredType));
-        }
-
-        /// <summary>
-        /// Repeater: instantiate its delegate `model` times as children of the Repeater's parent,
-        /// injecting a per-instance <c>index</c>. The generated items are ordinary scene items, so
-        /// they participate in anchors, positioners, animations, and rendering like anything else.
-        /// </summary>
-        private void ExpandRepeater(ObjectNode rep, QuillItem parent)
-        {
-            ObjectNode delegateNode = rep.Children.Count > 0 ? rep.Children[0] : null;
-            if (delegateNode == null) return;
-
-            int count = EvalModelCount(rep);
-            for (int i = 0; i < count; i++)
-            {
-                var inst = Instantiate(delegateNode, parent);
-                inst.Property("index").SetValue((double)i);
-            }
-        }
-
-        private int EvalModelCount(ObjectNode rep)
-        {
-            PropertyNode model = null;
-            foreach (var p in rep.Properties)
-                if (p.Name == "model") { model = p; break; }
-            if (model?.Value == null) return 0;
-
-            try
-            {
-                int n = (int)System.Math.Round(ConstEval(model.Value));
-                return n < 0 ? 0 : n;
-            }
-            catch
-            {
-                UnityEngine.Debug.LogWarning(
-                    "[Quill] Repeater 'model' must be a constant expression for now (e.g. model: 500).");
-                return 0;
-            }
-        }
-
-        // Evaluate a constant numeric expression (no identifiers) for Repeater models.
-        private static double ConstEval(ExprNode n)
-        {
-            switch (n)
-            {
-                case NumberNode num: return num.Value;
-                case UnaryNode u: return -ConstEval(u.Operand);
-                case BinaryNode b:
-                    double l = ConstEval(b.Left), r = ConstEval(b.Right);
-                    switch (b.Op)
-                    {
-                        case TokenType.Plus: return l + r;
-                        case TokenType.Minus: return l - r;
-                        case TokenType.Star: return l * r;
-                        case TokenType.Slash: return r == 0 ? 0 : l / r;
-                        case TokenType.Percent: return r == 0 ? 0 : l % r;
-                        default: throw new System.InvalidOperationException();
-                    }
-                default: throw new System.InvalidOperationException();
-            }
-        }
-
-        private void WireBindings()
-        {
-            foreach (var (node, obj) in _pairs)
-            {
-                foreach (var prop in node.Properties)
+                if (o.Functions.TryGetValue(name, out var fn))
                 {
-                    if (prop.Value == null) continue; // declaration with no initializer
-
-                    var ctx = new EvalContext(this, obj);
-                    var ast = prop.Value;
-                    var binding = new Binding(this, () => ast.Eval(ctx));
-                    obj.Property(prop.Name).SetBinding(binding);
+                    result = InvokeFunction(o, fn, args);
+                    return true;
+                }
+                if (o.SignalParams.ContainsKey(name))
+                {
+                    o.Emit(QuillObject.HandlerKey(name), args);
+                    result = null;
+                    return true;
                 }
             }
+            result = null;
+            return false;
         }
 
-        private static object DefaultForType(string declaredType)
+        private object InvokeFunction(QuillObject owner, FunctionDecl fn, object[] args)
         {
-            switch (declaredType)
+            if (_callDepth > 64)
             {
-                case "real":
-                case "double":
-                case "int": return 0.0;
-                case "bool": return false;
-                case "string": return "";
-                case "color": return "white";
-                default: return null; // var / unknown
+                UnityEngine.Debug.LogWarning($"[Quill] Function '{fn.Name}' recursed too deeply; stopped.");
+                return null;
+            }
+            var ctx = new EvalContext(this, owner) { Locals = new Dictionary<string, object>() };
+            for (int i = 0; i < fn.Params.Length; i++)
+                ctx.Locals[fn.Params[i]] = args != null && i < args.Length ? args[i] : null;
+            _callDepth++;
+            try { return Interpreter.Run(fn.Body, ctx); }
+            finally { _callDepth--; }
+        }
+
+        /// <summary>Run a signal handler with its parameters bound as locals.</summary>
+        private void RunHandler(QuillObject owner, string key, List<HandlerStmt> body, object[] args)
+        {
+            var ctx = new EvalContext(this, owner) { Locals = new Dictionary<string, object>() };
+            if (args != null && args.Length > 0 && key.Length > 2 && key.StartsWith("on"))
+            {
+                string sig = char.ToLowerInvariant(key[2]) + key.Substring(3);
+                if (owner.SignalParams.TryGetValue(sig, out var names))
+                    for (int i = 0; i < names.Length && i < args.Length; i++) ctx.Locals[names[i]] = args[i];
+            }
+            try { Interpreter.Run(body, ctx); }
+            catch (System.Exception e)
+            {
+                UnityEngine.Debug.LogWarning($"[Quill] Handler '{key}' on {owner.TypeName}{(owner.Id != null ? " '" + owner.Id + "'" : "")} threw: {e.Message}");
             }
         }
+
+        /// <summary>Run a ScriptAction's `script`.</summary>
+        internal void RunScript(QuillAnimation el) => el.Emit("script");
 
         // ---- Dirty-binding queue ---------------------------------------------------------------
 
         internal void Enqueue(Binding b) => _dirty.Enqueue(b);
 
         /// <summary>
-        /// Per-frame tick: process the pointer (hover/press/click), advance animations, then recompute
-        /// bindings. <paramref name="px"/>/<paramref name="py"/> are in surface pixels (top-left origin).
+        /// Per-frame tick: process the pointer (hover/press/click/drag/wheel), advance timers and
+        /// animations, then recompute bindings. <paramref name="px"/>/<paramref name="py"/> are in
+        /// surface pixels (top-left origin).
         /// </summary>
         public void Update(double dtSeconds, double px, double py, bool pointerDown)
+            => Update(dtSeconds, px, py, pointerDown, 0, 0);
+
+        /// <summary>
+        /// As <see cref="Update(double,double,double,bool)"/>, plus wheel input in QML angle-delta units
+        /// (120 per notch; positive y = away from the user).
+        /// </summary>
+        public void Update(double dtSeconds, double px, double py, bool pointerDown, double wheelX, double wheelY)
         {
-            ProcessPointer(px, py, pointerDown);
-            for (int i = 0; i < _animations.Count; i++)
-                Animations.Advance(_animations[i], dtSeconds);
+            Time += dtSeconds;
+            ProcessPointer(px, py, pointerDown, wheelX, wheelY);
+            Flush();
+            AdvanceTime(dtSeconds);
             Flush();
         }
 
         /// <summary>Animation-only tick (no pointer), for headless/non-interactive use.</summary>
         public void Update(double dtSeconds)
         {
-            for (int i = 0; i < _animations.Count; i++)
-                Animations.Advance(_animations[i], dtSeconds);
+            Time += dtSeconds;
+            AdvanceTime(dtSeconds);
             Flush();
-        }
-
-        // ---- Pointer state machine -------------------------------------------------------------
-
-        private void ProcessPointer(double px, double py, bool down)
-        {
-            bool moved = !double.IsNaN(_ptrX) && (px != _ptrX || py != _ptrY);
-            _ptrX = px; _ptrY = py;
-
-            var hit = HitTest(px, py);
-
-            // Keep area-local mouseX/mouseY fresh on whatever area receives events this frame
-            // (the area under the pointer, and the press grabber if we're dragging).
-            if (hit != null) SetLocalPointer(hit, px, py);
-            if (_grabber != null && _grabber != hit) SetLocalPointer(_grabber, px, py);
-
-            // Hover enter/exit.
-            if (hit != _hovered)
-            {
-                if (_hovered != null)
-                {
-                    _hovered.Property("containsMouse").SetValue(false);
-                    if (_hovered.HoverEnabled) _hovered.Emit("onExited");
-                }
-                _hovered = hit;
-                if (_hovered != null)
-                {
-                    _hovered.Property("containsMouse").SetValue(true);
-                    if (_hovered.HoverEnabled) _hovered.Emit("onEntered");
-                }
-            }
-
-            // Press / release / click (click = press and release over the same area).
-            if (down && !_wasDown)
-            {
-                _grabber = hit;
-                if (_grabber != null)
-                {
-                    _grabber.Property("pressed").SetValue(true);
-                    _grabber.Emit("onPressed");
-                }
-            }
-            else if (!down && _wasDown)
-            {
-                if (_grabber != null)
-                {
-                    _grabber.Property("pressed").SetValue(false);
-                    _grabber.Emit("onReleased");
-                    if (hit == _grabber) _grabber.Emit("onClicked");
-                    _grabber = null;
-                }
-            }
-
-            if (moved)
-            {
-                if (_grabber != null) _grabber.Emit("onPositionChanged");
-                else if (_hovered != null && _hovered.HoverEnabled) _hovered.Emit("onPositionChanged");
-            }
-
-            _wasDown = down;
-        }
-
-        private static void SetLocalPointer(QuillMouseArea a, double px, double py)
-        {
-            a.Property("mouseX").SetValue(px - a.AbsX());
-            a.Property("mouseY").SetValue(py - a.AbsY());
-        }
-
-        // Topmost enabled, visible MouseArea containing the point (later in tree order = on top).
-        private QuillMouseArea HitTest(double px, double py)
-        {
-            for (int i = _mouseAreas.Count - 1; i >= 0; i--)
-            {
-                var a = _mouseAreas[i];
-                if (!a.Enabled || !a.EffectiveVisible()) continue;
-                float ax = a.AbsX(), ay = a.AbsY(), aw = a.Num("width"), ah = a.Num("height");
-                if (px >= ax && px <= ax + aw && py >= ay && py <= ay + ah) return a;
-            }
-            return null;
         }
 
         /// <summary>Recompute every invalidated binding. Call once per frame (and after load).</summary>
@@ -547,8 +352,12 @@ namespace Quill
 
         private static void CollectRecursive(QuillObject obj, List<QuillItem> output)
         {
-            if (obj is QuillItem item && item.EffectiveVisible())
+            if (obj is QuillNonVisual) return;
+            if (obj is QuillItem item)
+            {
+                if (!item.Flag("visible")) return;   // a hidden item hides its subtree
                 output.Add(item);
+            }
 
             // Parents are added before children, so children composite on top — matching the tree.
             for (int i = 0; i < obj.Children.Count; i++)

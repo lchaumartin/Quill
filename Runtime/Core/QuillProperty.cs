@@ -7,9 +7,19 @@ using System.Collections.Generic;
 namespace Quill
 {
     /// <summary>
-    /// A single reactive property. Holds a boxed value (double / bool / string / Color / QuillObject).
-    /// Reading through <see cref="Get"/> registers a dependency on the binding currently being
-    /// evaluated (see <see cref="Binding"/>). Writing notifies every binding that depends on it.
+    /// Intercepts writes to a property — how <c>Behavior on x { ... }</c> turns a new value into an
+    /// animation toward it. Return true when the write was handled (the property is then driven by
+    /// the interceptor through <see cref="QuillProperty.SetAnimated"/>).
+    /// </summary>
+    public interface IPropertyInterceptor
+    {
+        bool Intercept(QuillProperty property, object newValue);
+    }
+
+    /// <summary>
+    /// A single reactive property. Holds a boxed value (double / bool / string / Color / list /
+    /// QuillObject). Reading through <see cref="Get"/> registers a dependency on the binding currently
+    /// being evaluated (see <see cref="Binding"/>). Writing notifies every binding that depends on it.
     ///
     /// This is the atom of Quill's reactivity: bindings observe properties, properties wake bindings.
     /// </summary>
@@ -30,6 +40,9 @@ namespace Quill
         /// <summary>Fired after the value changes. Used by the engine / renderer to mark dirty.</summary>
         public event Action Changed;
 
+        /// <summary>A <c>Behavior</c> animating writes to this property, if any.</summary>
+        public IPropertyInterceptor Interceptor;
+
         public QuillProperty(QuillObject owner, string name, object initial = null)
         {
             Owner = owner;
@@ -47,12 +60,21 @@ namespace Quill
             return _value;
         }
 
-        /// <summary>Imperative assignment. Removes any driving binding and notifies subscribers.</summary>
+        /// <summary>
+        /// Imperative assignment (a handler's <c>x = 5</c>, <c>engine.SetValue</c>). Removes any driving
+        /// binding and notifies subscribers. A <c>Behavior</c> on the property animates to the value.
+        /// </summary>
         public void SetValue(object v)
         {
             DetachDriver();
-            Assign(v);
+            Write(v);
         }
+
+        /// <summary>
+        /// Write an animation frame: keeps the driving binding (it still provides targets) and bypasses
+        /// any interceptor. Used by animations, behaviors and transitions.
+        /// </summary>
+        public void SetAnimated(object v) => Assign(v);
 
         /// <summary>Attach an expression that drives this property. Evaluated immediately.</summary>
         public void SetBinding(Binding b)
@@ -63,7 +85,13 @@ namespace Quill
             b.Evaluate();
         }
 
+        /// <summary>Drop the driving binding (if any) without changing the value.</summary>
+        public void ClearBinding() => DetachDriver();
+
         public bool HasBinding => _driver != null;
+
+        /// <summary>The binding driving this property, or null. States use it to restore bindings.</summary>
+        internal Binding Driver => _driver;
 
         // A replaced binding must also stop listening: otherwise its old dependencies keep
         // re-evaluating it and it overwrites the new value (e.g. a component's default binding
@@ -75,7 +103,13 @@ namespace Quill
         }
 
         /// <summary>Called by the driving binding when it recomputes a new value.</summary>
-        internal void AssignFromBinding(object v) => Assign(v);
+        internal void AssignFromBinding(object v) => Write(v);
+
+        private void Write(object v)
+        {
+            if (Interceptor != null && Interceptor.Intercept(this, v)) return;
+            Assign(v);
+        }
 
         private void Assign(object v)
         {
@@ -103,10 +137,17 @@ namespace Quill
             _subscribers.Remove(b);
         }
 
-        private static bool ValuesEqual(object a, object b)
+        internal static bool ValuesEqual(object a, object b)
         {
             if (ReferenceEquals(a, b)) return true;
             if (a == null || b == null) return false;
+            if (a is List<object> la && b is List<object> lb)
+            {
+                if (la.Count != lb.Count) return false;
+                for (int i = 0; i < la.Count; i++)
+                    if (!ValuesEqual(la[i], lb[i])) return false;
+                return true;
+            }
             return a.Equals(b);
         }
     }

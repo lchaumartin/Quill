@@ -2,8 +2,6 @@
 // Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
 //
 using System;
-using System.Collections.Generic;
-using Quill.Parsing;
 
 namespace Quill
 {
@@ -14,9 +12,9 @@ namespace Quill
     /// </summary>
     public static class MathBuiltins
     {
-        public static object Call(string fn, List<ExprNode> args, EvalContext ctx)
+        public static object Call(string fn, object[] args)
         {
-            double A(int i) => i < args.Count ? QuillConvert.ToDouble(args[i].Eval(ctx)) : 0.0;
+            double A(int i) => i < args.Length ? QuillConvert.ToDouble(args[i]) : 0.0;
 
             switch (fn)
             {
@@ -41,8 +39,8 @@ namespace Quill
                 case "atan": return Math.Atan(A(0));
                 case "atan2": return Math.Atan2(A(0), A(1));
                 case "hypot": return Math.Sqrt(A(0) * A(0) + A(1) * A(1));
-                case "min": return MinMax(args, ctx, true);
-                case "max": return MinMax(args, ctx, false);
+                case "min": return MinMax(args, true);
+                case "max": return MinMax(args, false);
                 case "random": return (double)UnityEngine.Random.value;
                 // Not in JS Math, but handy: clamp(value, lo, hi).
                 case "clamp": return Math.Min(Math.Max(A(0), A(1)), A(2));
@@ -52,13 +50,13 @@ namespace Quill
             }
         }
 
-        private static double MinMax(List<ExprNode> args, EvalContext ctx, bool wantMin)
+        private static double MinMax(object[] args, bool wantMin)
         {
-            if (args.Count == 0) return 0.0;
-            double acc = QuillConvert.ToDouble(args[0].Eval(ctx));
-            for (int i = 1; i < args.Count; i++)
+            if (args.Length == 0) return 0.0;
+            double acc = QuillConvert.ToDouble(args[0]);
+            for (int i = 1; i < args.Length; i++)
             {
-                double v = QuillConvert.ToDouble(args[i].Eval(ctx));
+                double v = QuillConvert.ToDouble(args[i]);
                 acc = wantMin ? Math.Min(acc, v) : Math.Max(acc, v);
             }
             return acc;

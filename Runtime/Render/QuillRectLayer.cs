@@ -19,7 +19,7 @@ namespace Quill
         {
             public Vector4 bounds;       // xy = top-left px, zw = size px
             public Vector4 color;        // rgba fill
-            public Vector4 prm;          // x = radius, y = opacity, z = border width
+            public Vector4 prm;          // x = radius, y = opacity, z = border width, w = edge softness
             public Vector4 borderColor;  // rgba border
         }
         private const int Stride = 64; // 4 * float4
@@ -72,7 +72,7 @@ namespace Quill
                 {
                     bounds = new Vector4(r.AbsX(), r.AbsY(), r.Num("width"), r.Num("height")),
                     color = new Vector4(c.r, c.g, c.b, c.a),
-                    prm = new Vector4(r.Num("radius"), Mathf.Clamp01(r.EffectiveOpacity()), r.Num("border.width"), 0f),
+                    prm = new Vector4(r.Num("radius"), Mathf.Clamp01(r.EffectiveOpacity()), r.Num("border.width"), Mathf.Max(0f, r.Num("softness"))),
                     borderColor = new Vector4(bc.r, bc.g, bc.b, bc.a),
                 };
             }

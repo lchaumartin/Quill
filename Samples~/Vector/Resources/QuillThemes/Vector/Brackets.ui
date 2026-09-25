@@ -1,0 +1,37 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Brackets — Vector: four L-shaped corner marks framing the parent. Internal to the theme.
+//   length, thickness (real), color
+Item {
+    id: brackets
+
+    property real length: 12
+    property real thickness: 2
+    property color color: Theme.accent
+
+    anchors.fill: parent
+
+    // Top-left, top-right, bottom-left, bottom-right: one horizontal and one vertical bar each.
+    Repeater {
+        model: 4
+        Item {
+            property bool right: index % 2 == 1
+            property bool bottom: index >= 2
+            Rectangle {
+                x: parent.right ? brackets.width - brackets.length : 0
+                y: parent.bottom ? brackets.height - brackets.thickness : 0
+                width: brackets.length
+                height: brackets.thickness
+                color: brackets.color
+            }
+            Rectangle {
+                x: parent.right ? brackets.width - brackets.thickness : 0
+                y: parent.bottom ? brackets.height - brackets.length : 0
+                width: brackets.thickness
+                height: brackets.length
+                color: brackets.color
+            }
+        }
+    }
+}

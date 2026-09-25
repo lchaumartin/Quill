@@ -1,0 +1,19 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Label — Pop: Bangers for titles and headings, Nunito ExtraBold for text.
+// Same API in every theme: text, kind: "title" | "heading" | "body" (default) | "caption"
+Text {
+    id: label
+
+    property string kind: "body"
+
+    color: label.kind == "caption" ? Theme.textMuted : Theme.text
+    font.family: label.kind == "title" || label.kind == "heading" ? Theme.titleFont : Theme.font
+    font.letterSpacing: label.kind == "title" ? 2 : label.kind == "heading" ? 1 : 0
+    fontSize: label.kind == "title" ? Theme.titleSize
+            : label.kind == "heading" ? 28
+            : label.kind == "caption" ? 14
+            : Theme.fontSize
+    lineHeight: label.kind == "title" ? 1.0 : 1.2
+}

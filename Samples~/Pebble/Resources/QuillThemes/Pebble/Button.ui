@@ -1,0 +1,60 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Button — Pebble: a soft pill resting on its shadow; it squishes down into it when pressed and
+// springs back. Same API in every theme: text, highlighted, enabled, down / hovered (read-only), signal clicked
+Item {
+    id: control
+
+    property string text: "Button"
+    property bool highlighted: false
+    property bool enabled: true
+    property bool down: area.pressed
+    property bool hovered: area.containsMouse
+    signal clicked
+
+    width: Math.max(104, label.contentWidth + 44)
+    height: 44
+    opacity: control.enabled ? 1 : 0.45
+
+    // 0 = resting, 1 = hovered (lifts a little), -1 = pressed (sinks); sprung.
+    property real lift: control.down ? -1 : control.hovered ? 1 : 0
+    Behavior on lift { SpringAnimation { spring: 6; damping: 0.28 } }
+
+    Rectangle {
+        x: 3
+        y: 6 + 2 * control.lift
+        width: control.width - 6
+        height: control.height
+        radius: control.height / 2
+        softness: 12 + 6 * control.lift
+        color: control.highlighted ? Qt.alpha(Qt.darker(Theme.accent, 1.3), 0.45) : Theme.shadow
+        opacity: 0.6 + 0.4 * (control.lift + 1) / 2
+    }
+    Rectangle {
+        y: -2 * control.lift
+        width: control.width
+        height: control.height
+        radius: control.height / 2
+        color: control.highlighted ? (control.hovered ? Qt.lighter(Theme.accent, 1.06) : Theme.accent)
+                                   : (control.hovered ? "#ffffff" : Theme.surface)
+        Behavior on color { ColorAnimation { duration: Theme.duration } }
+
+        Text {
+            id: label
+            text: control.text
+            color: control.highlighted ? Theme.accentText : Theme.text
+            fontSize: 17
+            font.family: Theme.titleFont
+            anchors.centerIn: parent
+        }
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onClicked: control.clicked()
+    }
+}

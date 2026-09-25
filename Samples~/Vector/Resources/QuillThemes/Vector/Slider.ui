@@ -1,0 +1,73 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Slider — Vector: a hairline scale with ticks, a phosphor run and a thin vertical cursor.
+// Same API in every theme: value, from, to, step, enabled, position / pressed (read-only), signal moved
+Item {
+    id: control
+
+    property real value: 0
+    property real from: 0
+    property real to: 1
+    property real step: 0
+    property bool enabled: true
+    property bool pressed: area.pressed
+    property real position: control.to > control.from ? Math.clamp((control.value - control.from) / (control.to - control.from), 0, 1) : 0
+    signal moved
+
+    width: 240
+    height: 26
+    opacity: control.enabled ? 1 : 0.35
+
+    property real pad: 3
+    property real travel: control.width - 2 * control.pad
+    property int ticks: control.step > 0 && (control.to - control.from) / control.step <= 20 ? Math.round((control.to - control.from) / control.step) : 20
+
+    function setFromX(px) {
+        var t = Math.clamp((px - control.pad) / Math.max(1, control.travel), 0, 1)
+        var v = control.from + t * (control.to - control.from)
+        if (control.step > 0) v = control.from + Math.round((v - control.from) / control.step) * control.step
+        if (v != control.value) { control.value = v; control.moved() }
+    }
+
+    Repeater {
+        model: control.ticks + 1
+        Rectangle {
+            x: control.pad + index / control.ticks * control.travel
+            y: control.height - height
+            width: 1
+            height: index % 5 == 0 || control.ticks <= 10 ? 6 : 3
+            color: index / control.ticks <= control.position ? Theme.accent : Theme.border
+        }
+    }
+    Rectangle {
+        x: control.pad
+        y: 8
+        width: control.travel
+        height: 1
+        color: Theme.border
+    }
+    Rectangle {
+        x: control.pad
+        y: 7
+        width: control.position * control.travel
+        height: 3
+        color: Theme.accent
+    }
+    Rectangle {
+        x: control.pad + control.position * control.travel - width / 2
+        y: 0
+        width: area.pressed ? 5 : 3
+        height: 17
+        color: area.containsMouse || area.pressed ? Theme.text : Theme.accent
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onPressed: control.setFromX(mouse.x)
+        onPositionChanged: { if (area.pressed) control.setFromX(mouse.x) }
+    }
+}

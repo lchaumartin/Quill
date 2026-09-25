@@ -1,0 +1,58 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// CheckBox — Frost: a small glass tile that lights up, with a bright inner pane when checked.
+// Same API in every theme: text, checked, enabled, signal toggled
+Item {
+    id: control
+
+    property string text: ""
+    property bool checked: false
+    property bool enabled: true
+    signal toggled
+
+    width: box.width + (control.text.length > 0 ? 12 + label.contentWidth : 0)
+    height: Math.max(box.height, label.contentHeight)
+    opacity: control.enabled ? 1 : 0.4
+
+    property real mark: control.checked ? 1 : 0
+    Behavior on mark { SpringAnimation { spring: 5; damping: 0.4 } }
+
+    FrostPane {
+        id: box
+        width: 26
+        height: 26
+        corner: 8
+        anchors.verticalCenter: parent.verticalCenter
+        active: control.checked
+        hot: area.containsMouse
+
+        FrostPane {
+            width: 12 * control.mark
+            height: width
+            corner: width / 3
+            anchors.centerIn: parent
+            restTint: "#ffffffeb"
+            visible: width > 1
+        }
+    }
+
+    Text {
+        id: label
+        text: control.text
+        color: Theme.text
+        fontSize: Theme.fontSize
+        font.family: Theme.font
+        anchors.left: box.right
+        anchors.leftMargin: 12
+        anchors.verticalCenter: parent.verticalCenter
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onClicked: { control.checked = !control.checked; control.toggled() }
+    }
+}

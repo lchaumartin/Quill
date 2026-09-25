@@ -1,0 +1,32 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Vector — a tactical HUD: hairlines, corner brackets, monospace capitals and instant response.
+// Made for sci-fi interfaces, strategy and simulation overlays.
+QtObject {
+    property string name: "Vector"
+    property string tagline: "Hairlines and brackets, for sci-fi HUDs, strategy and simulation."
+
+    property color background: "#040a0a"
+    property color surface: "#0a1716d9"
+    property color border: "#1e5a53"          // hairlines
+    property color control: "#0c201e"
+    property color controlHover: "#123330"
+    property color accent: "#3dffd0"          // phosphor mint
+    property color accentText: "#021412"
+    property color text: "#c8fff1"
+    property color textMuted: "#5f9e91"
+
+    property real radius: 0
+    property real borderWidth: 1
+    property real padding: 24
+    property real spacing: 14
+
+    // Share Tech Mono throughout (SIL Open Font License: see the sample's Licenses folder)
+    property string font: "QuillThemes/Vector/Fonts/ShareTechMono-Regular"
+    property string titleFont: "QuillThemes/Vector/Fonts/ShareTechMono-Regular"
+    property real fontSize: 15
+    property real titleSize: 30
+
+    property int duration: 70
+}

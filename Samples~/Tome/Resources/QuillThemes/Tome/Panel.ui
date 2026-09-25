@@ -1,0 +1,45 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Panel — Tome: vellum with a double ink rule and small corner blocks, on a faint shadow.
+Item {
+    id: panel
+
+    width: 340
+    height: 200
+
+    Rectangle {
+        x: 2; y: 5
+        width: panel.width
+        height: panel.height
+        radius: Theme.radius
+        softness: 14
+        color: "#3b240f40"
+    }
+    Rectangle {
+        width: panel.width
+        height: panel.height
+        radius: Theme.radius
+        color: Theme.surface
+        border.width: Theme.borderWidth
+        border.color: Theme.border
+    }
+    Rectangle {
+        x: 6; y: 6
+        width: panel.width - 12
+        height: panel.height - 12
+        color: "#00000000"
+        border.width: 1
+        border.color: Qt.alpha(Theme.border, 0.55)
+    }
+    Repeater {
+        model: 4
+        Rectangle {
+            width: 8
+            height: 8
+            x: index % 2 == 0 ? 2 : panel.width - 10
+            y: index < 2 ? 2 : panel.height - 10
+            color: Theme.border
+        }
+    }
+}

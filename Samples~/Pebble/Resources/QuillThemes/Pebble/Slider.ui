@@ -1,0 +1,89 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Slider — Pebble: a soft groove with a coral run and a plump white knob that grows under the finger.
+// Same API in every theme: value, from, to, step, enabled, position / pressed (read-only), signal moved
+Item {
+    id: control
+
+    property real value: 0
+    property real from: 0
+    property real to: 1
+    property real step: 0
+    property bool enabled: true
+    property bool pressed: area.pressed
+    property real position: control.to > control.from ? Math.clamp((control.value - control.from) / (control.to - control.from), 0, 1) : 0
+    signal moved
+
+    width: 240
+    height: 32
+    opacity: control.enabled ? 1 : 0.45
+
+    property real knob: 26
+    property real travel: control.width - control.knob
+    property real grow: area.pressed ? 1 : area.containsMouse ? 0.4 : 0
+    Behavior on grow { SpringAnimation { spring: 6; damping: 0.3 } }
+
+    function setFromX(px) {
+        var t = Math.clamp((px - control.knob / 2) / Math.max(1, control.travel), 0, 1)
+        var v = control.from + t * (control.to - control.from)
+        if (control.step > 0) v = control.from + Math.round((v - control.from) / control.step) * control.step
+        if (v != control.value) { control.value = v; control.moved() }
+    }
+
+    Rectangle {
+        x: control.knob / 2 - 5
+        width: control.travel + 10
+        height: 12
+        radius: 6
+        anchors.verticalCenter: parent.verticalCenter
+        color: Theme.control
+
+        Rectangle {
+            width: 10 + control.position * control.travel
+            height: parent.height
+            radius: parent.radius
+            color: Theme.accent
+        }
+    }
+
+    Item {
+        property real size: control.knob + 6 * control.grow
+        x: control.knob / 2 + control.position * control.travel - size / 2
+        y: (control.height - size) / 2
+        width: size
+        height: size
+
+        Rectangle {
+            x: 1; y: 3
+            width: parent.width
+            height: parent.height
+            radius: width / 2
+            softness: 8
+            color: Theme.shadow
+        }
+        Rectangle {
+            width: parent.width
+            height: parent.height
+            radius: width / 2
+            color: "#ffffff"
+
+            Rectangle {
+                width: 8
+                height: 8
+                radius: 4
+                anchors.centerIn: parent
+                color: Theme.accent
+            }
+        }
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onPressed: control.setFromX(mouse.x)
+        onPositionChanged: { if (area.pressed) control.setFromX(mouse.x) }
+    }
+}

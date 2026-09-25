@@ -1,0 +1,41 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// ProgressBar — Bitmap: a sunken frame filling with gold blocks.
+// Same API in every theme: value, from, to, position (read-only)
+Item {
+    id: control
+
+    property real value: 0
+    property real from: 0
+    property real to: 1
+    property real position: control.to > control.from ? Math.clamp((control.value - control.from) / (control.to - control.from), 0, 1) : 0
+
+    width: 240
+    height: 7 * Theme.pixel
+
+    property real cell: 3 * Theme.pixel
+    property int cells: Math.max(1, Math.floor((control.width - 4 * Theme.pixel + Theme.pixel) / (control.cell + Theme.pixel)))
+    property int lit: Math.round(control.position * control.cells)
+
+    PixelBlock {
+        width: control.width
+        height: control.height
+        sunken: true
+        color: Theme.border
+        bevel: false
+    }
+    Row {
+        x: 2 * Theme.pixel
+        y: 2 * Theme.pixel
+        spacing: Theme.pixel
+        Repeater {
+            model: control.lit
+            Rectangle {
+                width: control.cell
+                height: 3 * Theme.pixel
+                color: Theme.accent
+            }
+        }
+    }
+}

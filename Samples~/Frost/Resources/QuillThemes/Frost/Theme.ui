@@ -1,0 +1,43 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Frost — frosted glass panes over your 3D scene (Quill/Effect/Glass): they blur and refract
+// whatever the camera sees behind them. Made for premium menus, pause screens and HUDs.
+//
+// Glass shows the scene, not other Quill elements, so the page is transparent (background) and
+// every control is built from FrostPane. On URP the camera needs the Opaque Texture (the sample's
+// FrostBackdrop turns it on for the main camera).
+QtObject {
+    property string name: "Frost"
+    property string tagline: "Frosted glass over your scene, for premium menus and HUDs."
+
+    // Colours (glass tints carry alpha: how much of the tint covers the blurred scene)
+    property color background: "#00000000"
+    property color surface: "#0a0f1e38"      // panel glass
+    property color border: "#ffffff38"
+    property color control: "#ffffff1c"      // control glass at rest
+    property color controlHover: "#ffffff33"
+    property color accent: "#3a86ff"
+    property color accentText: "#ffffff"
+    property color text: "#ffffff"
+    property color textMuted: "#ffffffb3"
+
+    // Shape and spacing
+    property real radius: 22
+    property real borderWidth: 0
+    property real padding: 26
+    property real spacing: 14
+
+    // Type (Inter, SIL Open Font License: see the sample's Licenses folder)
+    property string font: "QuillThemes/Frost/Fonts/Inter-Regular"
+    property string titleFont: "QuillThemes/Frost/Fonts/Inter-SemiBold"
+    property real fontSize: 15
+    property real titleSize: 34
+
+    property int duration: 220
+
+    // Frost only: the glass itself (see Quill/Effect/Glass).
+    property real refraction: 24          // lens band at the edges, px
+    property real blur: 3                 // backdrop blur radius, px
+    property real softness: 10            // rounded bevel width, px
+}

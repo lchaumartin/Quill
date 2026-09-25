@@ -1,0 +1,51 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// FrostPane — one pane of Quill/Effect/Glass, with eased hover / press / tint. Every Frost control
+// is built from it (it's internal to the theme; use it directly for glass cards of your own).
+//   interactive (bool)    hover / press feedback and the `clicked` signal
+//   hot (bool)            show the hover look when the pointer is over a parent control instead
+//   active (bool)         lit: the pane takes `activeTint`
+//   restTint, hoverTint, activeTint (color)
+//   corner (real)         corner radius, px
+//   lens (real)           refraction multiplier (1 = the theme's)
+//   hovered, pressed (bool, read-only), signal clicked
+ShaderEffect {
+    id: pane
+    shader: "Quill/Effect/Glass"
+
+    property bool interactive: false
+    property bool hot: false
+    property bool active: false
+    property bool enabled: true
+    property bool hovered: area.containsMouse
+    property bool pressed: area.pressed
+    signal clicked
+
+    property color restTint: Theme.control
+    property color hoverTint: Theme.controlHover
+    property color activeTint: Qt.alpha(Theme.accent, 0.8)
+
+    property real hover: (pane.interactive && area.containsMouse) || pane.hot ? 1 : 0
+    Behavior on hover { NumberAnimation { duration: Theme.duration; easing.type: Easing.OutCubic } }
+    property real press: pane.interactive && area.pressed ? 1 : 0
+    Behavior on press { SpringAnimation { spring: 4.5; damping: 0.32 } }
+    property color tint: pane.active ? pane.activeTint : pane.hover > 0.5 ? pane.hoverTint : pane.restTint
+    Behavior on tint { ColorAnimation { duration: Theme.duration; easing.type: Easing.OutCubic } }
+
+    property real corner: Theme.radius
+    property real lens: 1
+
+    cornerRadius: pane.corner
+    refraction: Theme.refraction * pane.lens * (1 + 0.5 * pane.hover + 0.75 * pane.press)
+    radius: Theme.blur + 5 * pane.press
+    softness: Math.min(Theme.softness, pane.corner)
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: pane.interactive && pane.enabled
+        onClicked: pane.clicked()
+    }
+}

@@ -21,6 +21,9 @@ namespace Quill
         private readonly List<GameObject> _pool = new List<GameObject>();
         private readonly List<Material> _materials = new List<Material>();
         private readonly List<Mesh> _meshes = new List<Mesh>();
+
+        /// <summary>Queues reserved for effects above the base; later effects share the last one.</summary>
+        public const int MaxQueueSteps = 96;
         private readonly List<string> _shaderNames = new List<string>();
 
         private readonly Vector3[] _v = new Vector3[4];
@@ -38,7 +41,7 @@ namespace Quill
         private static readonly HashSet<string> Reserved = new HashSet<string>
         {
             "x", "y", "z", "width", "height", "visible", "opacity", "enabled", "index", "shader",
-            "left", "right", "top", "bottom", "horizontalCenter", "verticalCenter"
+            "left", "right", "top", "bottom", "horizontalCenter", "verticalCenter", "state"
         };
 
         public QuillShaderEffectLayer(Transform parent, int renderQueue)
@@ -84,6 +87,10 @@ namespace Quill
                     ForwardUniform(mat, prop.Name, prop.Raw);
                 }
 
+                // One render queue step per effect keeps overlapping effects in tree order (a picker
+                // on a glass panel draws over the panel), all between the images and the text. Not
+                // sortingOrder: that outranks the render queue, so effects would cover the text.
+                mat.renderQueue = _renderQueue + Mathf.Min(i, MaxQueueSteps - 1);
                 _pool[i].SetActive(true);
             }
 

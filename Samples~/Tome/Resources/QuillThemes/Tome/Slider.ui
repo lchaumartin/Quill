@@ -1,0 +1,88 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Slider — Tome: an inked rule with tick marks, a wax-red run and a round seal to drag.
+// Same API in every theme: value, from, to, step, enabled, position / pressed (read-only), signal moved
+Item {
+    id: control
+
+    property real value: 0
+    property real from: 0
+    property real to: 1
+    property real step: 0
+    property bool enabled: true
+    property bool pressed: area.pressed
+    property real position: control.to > control.from ? Math.clamp((control.value - control.from) / (control.to - control.from), 0, 1) : 0
+    signal moved
+
+    width: 240
+    height: 30
+    opacity: control.enabled ? 1 : 0.45
+
+    property real knob: 20
+    property real travel: control.width - control.knob
+    // One tick per step when stepped (if that's a sensible number), else every tenth.
+    property int ticks: control.step > 0 && (control.to - control.from) / control.step <= 20 ? Math.round((control.to - control.from) / control.step) : 10
+
+    function setFromX(px) {
+        var t = Math.clamp((px - control.knob / 2) / Math.max(1, control.travel), 0, 1)
+        var v = control.from + t * (control.to - control.from)
+        if (control.step > 0) v = control.from + Math.round((v - control.from) / control.step) * control.step
+        if (v != control.value) { control.value = v; control.moved() }
+    }
+
+    Repeater {
+        model: control.ticks + 1
+        Rectangle {
+            x: control.knob / 2 + index / control.ticks * control.travel - 0.5
+            y: control.height / 2 + 4
+            width: 1
+            height: index % 5 == 0 || control.ticks <= 10 ? 6 : 3
+            color: Qt.alpha(Theme.border, 0.7)
+        }
+    }
+    Rectangle {
+        x: control.knob / 2
+        width: control.travel
+        height: 2
+        anchors.verticalCenter: parent.verticalCenter
+        color: Theme.border
+    }
+    Rectangle {
+        x: control.knob / 2
+        width: control.position * control.travel
+        height: 4
+        anchors.verticalCenter: parent.verticalCenter
+        color: Theme.accent
+    }
+    Rectangle {
+        property real size: control.knob + (area.pressed ? 3 : 0)
+        x: control.knob / 2 + control.position * control.travel - size / 2
+        anchors.verticalCenter: parent.verticalCenter
+        width: size
+        height: size
+        radius: size / 2
+        color: area.containsMouse || area.pressed ? Qt.lighter(Theme.accent, 1.15) : Theme.accent
+        border.width: 2
+        border.color: Qt.darker(Theme.accent, 1.6)
+
+        Rectangle {
+            width: parent.width * 0.4
+            height: width
+            radius: width / 2
+            anchors.centerIn: parent
+            color: "#00000000"
+            border.width: 1
+            border.color: Qt.alpha(Theme.accentText, 0.6)
+        }
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onPressed: control.setFromX(mouse.x)
+        onPositionChanged: { if (area.pressed) control.setFromX(mouse.x) }
+    }
+}

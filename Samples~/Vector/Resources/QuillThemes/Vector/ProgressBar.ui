@@ -1,0 +1,36 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// ProgressBar — Vector: a hairline frame with thin phosphor bars filling in.
+// Same API in every theme: value, from, to, position (read-only)
+Rectangle {
+    id: control
+
+    property real value: 0
+    property real from: 0
+    property real to: 1
+    property real position: control.to > control.from ? Math.clamp((control.value - control.from) / (control.to - control.from), 0, 1) : 0
+
+    width: 240
+    height: 12
+    color: "#00000000"
+    border.width: Theme.borderWidth
+    border.color: Theme.border
+
+    property int bars: Math.max(4, Math.floor((control.width - 4) / 6))
+    property int lit: Math.round(control.position * control.bars)
+
+    Row {
+        x: 3
+        y: 3
+        spacing: 2
+        Repeater {
+            model: control.lit
+            Rectangle {
+                width: (control.width - 6 - 2 * (control.bars - 1)) / control.bars
+                height: control.height - 6
+                color: Theme.accent
+            }
+        }
+    }
+}

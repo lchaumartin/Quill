@@ -32,7 +32,7 @@ Shader "Quill/Surface"
             {
                 float4 bounds;      // xy = top-left px (y-down), zw = size px
                 float4 color;       // rgba straight-alpha fill
-                float4 prm;         // x = radius, y = opacity, z = border width, w = unused
+                float4 prm;         // x = radius, y = opacity, z = border width, w = edge softness (px)
                 float4 borderColor; // rgba straight-alpha border
             };
 
@@ -103,7 +103,12 @@ Shader "Quill/Surface"
                     //      went soft and dim on the corners while the sides stayed crisp.
                     //   2. HLSL leaves derivatives undefined after divergent control flow, and the
                     //      per-pixel `continue` below diverges inside this loop.
-                    float coverage = saturate(0.5 - d);
+                    //
+                    // `softness` widens that ramp into a smooth feather centred on the outline, for
+                    // soft shadows and glows (0 keeps the crisp 1px edge above).
+                    float soft = rect.prm.w;
+                    float coverage = soft > 0.0 ? 1.0 - smoothstep(-0.5 * soft - 0.5, 0.5 * soft + 0.5, d)
+                                                : saturate(0.5 - d);
                     if (coverage <= 0.0) continue;
 
                     float4 fill = rect.color;

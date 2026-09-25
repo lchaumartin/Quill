@@ -1,0 +1,54 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// CheckBox — Vector: a hairline square with a solid phosphor core.
+// Same API in every theme: text, checked, enabled, signal toggled
+Item {
+    id: control
+
+    property string text: ""
+    property bool checked: false
+    property bool enabled: true
+    signal toggled
+
+    width: box.width + (control.text.length > 0 ? 12 + label.contentWidth : 0)
+    height: Math.max(box.height, label.contentHeight)
+    opacity: control.enabled ? 1 : 0.35
+
+    Rectangle {
+        id: box
+        width: 18
+        height: 18
+        anchors.verticalCenter: parent.verticalCenter
+        color: area.containsMouse ? Theme.controlHover : Theme.control
+        border.width: Theme.borderWidth
+        border.color: control.checked || area.containsMouse ? Theme.accent : Theme.border
+
+        Rectangle {
+            width: 10
+            height: 10
+            anchors.centerIn: parent
+            color: Theme.accent
+            visible: control.checked
+        }
+    }
+
+    Text {
+        id: label
+        text: control.text
+        color: control.checked ? Theme.text : Theme.textMuted
+        fontSize: Theme.fontSize
+        font.family: Theme.font
+        anchors.left: box.right
+        anchors.leftMargin: 12
+        anchors.verticalCenter: parent.verticalCenter
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onClicked: { control.checked = !control.checked; control.toggled() }
+    }
+}

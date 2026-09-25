@@ -1,0 +1,34 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Panel — Arcade: a dark glass slab with a magenta neon rim, its glow, and a cyan strip on top.
+Item {
+    id: panel
+
+    width: 340
+    height: 200
+
+    Rectangle {
+        x: -4; y: -4
+        width: panel.width + 8
+        height: panel.height + 8
+        radius: Theme.radius + 4
+        softness: 26
+        color: Qt.alpha(Theme.border, 0.28 * Theme.glow)
+    }
+    Rectangle {
+        width: panel.width
+        height: panel.height
+        radius: Theme.radius
+        color: Theme.surface
+        border.width: Theme.borderWidth
+        border.color: Qt.alpha(Theme.border, 0.85)
+    }
+    Rectangle {
+        x: Theme.padding
+        y: 0
+        width: 56
+        height: 3
+        color: Theme.accent
+    }
+}

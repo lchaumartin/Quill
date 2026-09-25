@@ -1,0 +1,21 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Label — text in the theme's type. Same API in every theme:
+//   text (string), kind: "title" | "heading" | "body" (default) | "caption"
+//   Everything else a Text has (width + wrapMode, horizontalAlignment, color…) still works.
+// Use:  Label { kind: "heading"; text: "Audio" }
+Text {
+    id: label
+
+    property string kind: "body"
+
+    color: label.kind == "caption" ? Theme.textMuted : Theme.text
+    font.family: label.kind == "title" || label.kind == "heading" ? Theme.titleFont : Theme.font
+    font.bold: label.kind == "heading"
+    fontSize: label.kind == "title" ? Theme.titleSize
+            : label.kind == "heading" ? Math.round(Theme.fontSize * 1.2)
+            : label.kind == "caption" ? Math.round(Theme.fontSize * 0.87)
+            : Theme.fontSize
+    lineHeight: 1.25
+}

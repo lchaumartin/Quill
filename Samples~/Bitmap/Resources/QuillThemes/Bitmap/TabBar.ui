@@ -1,0 +1,44 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// TabBar — Bitmap: pixel tabs; the current one is a raised gold block.
+// Same API in every theme: model (list of strings), currentIndex, enabled, signal activated(int index)
+Row {
+    id: control
+
+    property var model: []
+    property int currentIndex: 0
+    property bool enabled: true
+    signal activated(int index)
+
+    spacing: Theme.pixel * 2
+    opacity: control.enabled ? 1 : 0.4
+
+    Repeater {
+        model: control.model
+
+        PixelBlock {
+            property bool current: index == control.currentIndex
+            width: Math.ceil((tabLabel.contentWidth + 24) / Theme.pixel) * Theme.pixel
+            height: 12 * Theme.pixel
+            sunken: !current
+            color: current ? Theme.accent : tabArea.containsMouse ? Theme.controlHover : Theme.control
+
+            Text {
+                id: tabLabel
+                text: modelData
+                color: parent.current ? Theme.accentText : Theme.text
+                fontSize: 16
+                font.family: Theme.font
+                anchors.centerIn: parent
+            }
+            MouseArea {
+                id: tabArea
+                anchors.fill: parent
+                hoverEnabled: true
+                enabled: control.enabled
+                onClicked: { control.currentIndex = index; control.activated(index) }
+            }
+        }
+    }
+}

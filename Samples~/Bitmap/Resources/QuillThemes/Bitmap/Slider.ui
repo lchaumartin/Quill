@@ -1,0 +1,64 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Slider — Bitmap: a sunken pixel groove, a gold run and a raised block handle that moves in
+// whole pixels. Same API in every theme: value, from, to, step, enabled, position / pressed (read-only), signal moved
+Item {
+    id: control
+
+    property real value: 0
+    property real from: 0
+    property real to: 1
+    property real step: 0
+    property bool enabled: true
+    property bool pressed: area.pressed
+    property real position: control.to > control.from ? Math.clamp((control.value - control.from) / (control.to - control.from), 0, 1) : 0
+    signal moved
+
+    width: 240
+    height: 10 * Theme.pixel
+    opacity: control.enabled ? 1 : 0.4
+
+    property real knob: 6 * Theme.pixel
+    property real travel: control.width - control.knob
+    // Snap the handle to the art-pixel grid.
+    property real knobX: Math.round(control.position * control.travel / Theme.pixel) * Theme.pixel
+
+    function setFromX(px) {
+        var t = Math.clamp((px - control.knob / 2) / Math.max(1, control.travel), 0, 1)
+        var v = control.from + t * (control.to - control.from)
+        if (control.step > 0) v = control.from + Math.round((v - control.from) / control.step) * control.step
+        if (v != control.value) { control.value = v; control.moved() }
+    }
+
+    PixelBlock {
+        y: 3 * Theme.pixel
+        width: control.width
+        height: 4 * Theme.pixel
+        sunken: true
+        bevel: false
+        color: Theme.border
+    }
+    Rectangle {
+        x: Theme.pixel
+        y: 4 * Theme.pixel
+        width: Math.max(0, control.knobX + control.knob / 2 - Theme.pixel)
+        height: 2 * Theme.pixel
+        color: Theme.accent
+    }
+    PixelBlock {
+        x: control.knobX
+        width: control.knob
+        height: control.height
+        color: area.pressed ? Theme.accent : area.containsMouse ? Theme.text : Theme.textMuted
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onPressed: control.setFromX(mouse.x)
+        onPositionChanged: { if (area.pressed) control.setFromX(mouse.x) }
+    }
+}

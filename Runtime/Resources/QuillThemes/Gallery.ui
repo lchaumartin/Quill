@@ -1,0 +1,211 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Gallery — every control of the current theme on one screen. A Quill Document with no document
+// assigned shows it, and each theme sample's scene is exactly that: pick another theme in the
+// Inspector and the same document restyles. Nothing below names a theme — only the palette
+// (`Theme.*`) and the shared controls — which is the point: your documents work the same way.
+//
+// The Accent panel writes the palette live (`Theme.accent = color`); every control follows.
+Rectangle {
+    id: root
+    color: Theme.background
+
+    property int clicks: 0
+    property color startAccent: "#000000"
+    property real load: 0
+    NumberAnimation on load { from: 0; to: 1; duration: 3200; loops: Animation.Infinite; easing.type: Easing.InOutCubic }
+
+    Component.onCompleted: {
+        root.startAccent = Theme.accent
+        picker.color = Theme.accent
+    }
+
+    property real panelWidth: 340
+    property real inner: root.panelWidth - 2 * Theme.padding
+
+    Column {
+        id: page
+        spacing: 28
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: Math.max(32, (root.height - page.height) * 0.5)
+
+        Column {
+            spacing: 4
+            Label { kind: "title"; text: Theme.name }
+            Label { kind: "caption"; text: Theme.tagline }
+        }
+
+        Row {
+            spacing: 24
+
+            Column {
+                spacing: 24
+
+                // ---- Buttons ----------------------------------------------------------------------
+                Panel {
+                    width: root.panelWidth
+                    height: buttons.height + 2 * Theme.padding
+                    Column {
+                        id: buttons
+                        x: Theme.padding
+                        y: Theme.padding
+                        width: root.inner
+                        spacing: Theme.spacing
+
+                        Label { kind: "heading"; text: "Buttons" }
+                        Row {
+                            spacing: 10
+                            Button { text: "Play"; highlighted: true; onClicked: root.clicks = root.clicks + 1 }
+                            Button { text: "Options"; onClicked: root.clicks = root.clicks + 1 }
+                        }
+                        Row {
+                            spacing: 10
+                            Button { text: "Locked"; enabled: false }
+                            Button { text: "Reset"; onClicked: root.clicks = 0 }
+                        }
+                        Label {
+                            kind: "caption"
+                            text: root.clicks == 0 ? "Nothing clicked yet." : "Clicked " + root.clicks + (root.clicks == 1 ? " time." : " times.")
+                        }
+                    }
+                }
+
+                // ---- Toggles ----------------------------------------------------------------------
+                Panel {
+                    width: root.panelWidth
+                    height: toggles.height + 2 * Theme.padding
+                    Column {
+                        id: toggles
+                        x: Theme.padding
+                        y: Theme.padding
+                        width: root.inner
+                        spacing: Theme.spacing
+
+                        Label { kind: "heading"; text: "Toggles" }
+                        CheckBox { text: "Subtitles"; checked: true }
+                        CheckBox { text: "Show FPS counter" }
+                        Switch { text: "V-Sync"; checked: true }
+                        Switch { text: "Motion blur" }
+                    }
+                }
+            }
+
+            Column {
+                spacing: 24
+
+                // ---- Values -----------------------------------------------------------------------
+                Panel {
+                    width: root.panelWidth
+                    height: values.height + 2 * Theme.padding
+                    Column {
+                        id: values
+                        x: Theme.padding
+                        y: Theme.padding
+                        width: root.inner
+                        spacing: Theme.spacing
+
+                        Label { kind: "heading"; text: "Values" }
+
+                        Column {
+                            spacing: 6
+                            Item {
+                                width: root.inner
+                                height: volumeLabel.height
+                                Label { id: volumeLabel; text: "Volume" }
+                                Label { kind: "caption"; text: Math.round(volume.value) + "%"; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                            }
+                            Slider { id: volume; width: root.inner; from: 0; to: 100; value: 70 }
+                        }
+
+                        Column {
+                            spacing: 6
+                            Item {
+                                width: root.inner
+                                height: difficultyLabel.height
+                                Label { id: difficultyLabel; text: "Difficulty" }
+                                Label {
+                                    kind: "caption"
+                                    text: ["Story", "Easy", "Normal", "Hard", "Brutal"][Math.round(difficulty.value)]
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                            Slider { id: difficulty; width: root.inner; from: 0; to: 4; step: 1; value: 2 }
+                        }
+
+                        Column {
+                            spacing: 10
+                            Item {
+                                width: root.inner
+                                height: loadingLabel.height
+                                Label { id: loadingLabel; text: "Loading" }
+                                Label { kind: "caption"; text: Math.round(root.load * 100) + "%"; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter }
+                            }
+                            ProgressBar { width: root.inner; value: root.load }
+                        }
+                    }
+                }
+
+                // ---- Tabs -------------------------------------------------------------------------
+                Panel {
+                    width: root.panelWidth
+                    height: tabsColumn.height + 2 * Theme.padding
+                    Column {
+                        id: tabsColumn
+                        x: Theme.padding
+                        y: Theme.padding
+                        width: root.inner
+                        spacing: Theme.spacing
+
+                        Label { kind: "heading"; text: "Tabs" }
+                        TabBar { id: tabs; model: ["Video", "Audio", "Controls"] }
+                        Label {
+                            width: root.inner
+                            wrapMode: Text.WordWrap
+                            kind: "caption"
+                            text: ["Resolution, frame rate and quality presets would live here.",
+                                   "Volume sliders and the output device would live here.",
+                                   "Key bindings and mouse sensitivity would live here."][tabs.currentIndex]
+                        }
+                    }
+                }
+            }
+
+            // ---- Accent: the palette is live ----------------------------------------------------------
+            Panel {
+                width: root.panelWidth
+                height: accent.height + 2 * Theme.padding
+                Column {
+                    id: accent
+                    x: Theme.padding
+                    y: Theme.padding
+                    width: root.inner
+                    spacing: Theme.spacing
+
+                    Label { kind: "heading"; text: "Accent" }
+                    Label {
+                        width: root.inner
+                        wrapMode: Text.WordWrap
+                        kind: "caption"
+                        text: "The theme's palette is live: pick a colour and every control follows."
+                    }
+                    ColorPicker {
+                        id: picker
+                        width: root.inner
+                        showAlpha: false
+                        onMoved: Theme.accent = color
+                    }
+                    Button {
+                        text: "Restore"
+                        enabled: !Qt.colorEqual(Theme.accent, root.startAccent)
+                        onClicked: {
+                            Theme.accent = root.startAccent
+                            picker.color = root.startAccent
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

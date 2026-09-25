@@ -1,0 +1,28 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Button — Frost: a glass pill; the highlighted one is lit with the accent. Same API in every theme:
+//   text, highlighted, enabled, down / hovered (read-only), signal clicked
+FrostPane {
+    id: control
+
+    property string text: "Button"
+    property bool highlighted: false
+    property bool down: control.pressed
+
+    interactive: true
+    active: control.highlighted
+    width: Math.max(104, label.contentWidth + 44)
+    height: 42
+    corner: height / 2
+    opacity: control.enabled ? 1 : 0.4
+
+    Text {
+        id: label
+        text: control.text
+        color: Theme.text
+        fontSize: Theme.fontSize
+        font.family: control.highlighted ? Theme.titleFont : Theme.font
+        anchors.centerIn: parent
+    }
+}

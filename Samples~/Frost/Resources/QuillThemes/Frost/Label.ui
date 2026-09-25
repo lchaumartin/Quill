@@ -1,0 +1,18 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Label — Frost: Inter, semibold for titles and headings. Same API in every theme:
+//   text (string), kind: "title" | "heading" | "body" (default) | "caption"
+Text {
+    id: label
+
+    property string kind: "body"
+
+    color: label.kind == "caption" ? Theme.textMuted : Theme.text
+    font.family: label.kind == "title" || label.kind == "heading" ? Theme.titleFont : Theme.font
+    fontSize: label.kind == "title" ? Theme.titleSize
+            : label.kind == "heading" ? 18
+            : label.kind == "caption" ? 13
+            : Theme.fontSize
+    lineHeight: 1.25
+}

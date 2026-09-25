@@ -1,0 +1,35 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Arcade — neon on midnight purple: glowing outlines, hard corners, snappy motion. Made for racing,
+// rhythm and retro-wave games. Glows are soft Rectangles (`softness`) behind the shapes.
+QtObject {
+    property string name: "Arcade"
+    property string tagline: "Neon on midnight, for racing, rhythm and retro-wave games."
+
+    property color background: "#0b0420"
+    property color surface: "#150a2ee6"
+    property color border: "#ff2bd6"          // magenta neon: panels and idle outlines
+    property color control: "#1d1040"
+    property color controlHover: "#2b1760"
+    property color accent: "#00e5ff"          // cyan neon: active and highlighted
+    property color accentText: "#0b0420"
+    property color text: "#f7ecff"
+    property color textMuted: "#b7a3e0"
+
+    property real radius: 4
+    property real borderWidth: 2
+    property real padding: 24
+    property real spacing: 16
+
+    // Orbitron for titles and buttons, Rajdhani for body (SIL Open Font License: see the sample's Licenses folder)
+    property string font: "QuillThemes/Arcade/Fonts/Rajdhani-Medium"
+    property string titleFont: "QuillThemes/Arcade/Fonts/Orbitron-Bold"
+    property real fontSize: 18
+    property real titleSize: 34
+
+    property int duration: 90
+
+    // Arcade only: how strongly things glow (0 = flat neon).
+    property real glow: 1
+}

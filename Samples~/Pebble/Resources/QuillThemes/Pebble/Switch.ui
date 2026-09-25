@@ -1,0 +1,66 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Switch — Pebble: a soft pill; the white knob springs across, casting its own little shadow.
+// Same API in every theme: text, checked, enabled, signal toggled
+Item {
+    id: control
+
+    property string text: ""
+    property bool checked: false
+    property bool enabled: true
+    signal toggled
+
+    width: track.width + (control.text.length > 0 ? 12 + label.contentWidth : 0)
+    height: Math.max(track.height, label.contentHeight)
+    opacity: control.enabled ? 1 : 0.45
+
+    property real position: control.checked ? 1 : 0
+    Behavior on position { SpringAnimation { spring: 5; damping: 0.3 } }
+
+    Rectangle {
+        id: track
+        width: 52
+        height: 30
+        radius: 15
+        anchors.verticalCenter: parent.verticalCenter
+        color: Qt.tint(area.containsMouse ? Theme.controlHover : Theme.control, Qt.alpha(Theme.accent, Math.clamp(control.position, 0, 1)))
+
+        Rectangle {
+            x: 4 + control.position * (track.width - 30) + 1
+            y: 6
+            width: 22
+            height: 22
+            radius: 11
+            softness: 6
+            color: Theme.shadow
+        }
+        Rectangle {
+            x: 4 + control.position * (track.width - 30)
+            y: 4
+            width: 22
+            height: 22
+            radius: 11
+            color: "#ffffff"
+        }
+    }
+
+    Text {
+        id: label
+        text: control.text
+        color: Theme.text
+        fontSize: Theme.fontSize
+        font.family: Theme.font
+        anchors.left: track.right
+        anchors.leftMargin: 12
+        anchors.verticalCenter: parent.verticalCenter
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onClicked: { control.checked = !control.checked; control.toggled() }
+    }
+}

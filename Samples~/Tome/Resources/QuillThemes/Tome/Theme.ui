@@ -1,0 +1,32 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Tome — ink on parchment: double-ruled frames, Cinzel capitals and a wax-red accent. Made for RPG
+// and fantasy inventories, quest logs and dialogue.
+QtObject {
+    property string name: "Tome"
+    property string tagline: "Ink on parchment, for RPG inventories, quest logs and dialogue."
+
+    property color background: "#d6c29a"      // the page
+    property color surface: "#f2e7cc"         // lighter vellum panels
+    property color border: "#5a3d22"          // ink
+    property color control: "#ebdcb9"
+    property color controlHover: "#f8eed6"
+    property color accent: "#8e2424"          // sealing wax
+    property color accentText: "#f7ecd4"
+    property color text: "#2a1a0e"
+    property color textMuted: "#6f5840"
+
+    property real radius: 3
+    property real borderWidth: 2
+    property real padding: 30
+    property real spacing: 14
+
+    // Cinzel for titles, EB Garamond for text (SIL Open Font License: see the sample's Licenses folder)
+    property string font: "QuillThemes/Tome/Fonts/EBGaramond-Regular"
+    property string titleFont: "QuillThemes/Tome/Fonts/Cinzel-Bold"
+    property real fontSize: 19
+    property real titleSize: 40
+
+    property int duration: 180
+}

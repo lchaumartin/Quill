@@ -1,0 +1,35 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// ProgressBar — Arcade: a row of neon cells that light up one by one.
+// Same API in every theme: value, from, to, position (read-only)
+Item {
+    id: control
+
+    property real value: 0
+    property real from: 0
+    property real to: 1
+    property real position: control.to > control.from ? Math.clamp((control.value - control.from) / (control.to - control.from), 0, 1) : 0
+
+    width: 240
+    height: 14
+
+    property int cells: Math.max(4, Math.floor((control.width + 3) / 13))
+    property real cellW: (control.width - 3 * (control.cells - 1)) / control.cells
+    property int lit: Math.round(control.position * control.cells)
+
+    Row {
+        spacing: 3
+        Repeater {
+            model: control.cells
+            Rectangle {
+                width: control.cellW
+                height: control.height
+                radius: 1
+                color: index < control.lit ? Theme.accent : Theme.control
+                border.width: index < control.lit ? 0 : 1
+                border.color: Qt.alpha(Theme.border, 0.5)
+            }
+        }
+    }
+}

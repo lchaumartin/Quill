@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
 //
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
 
@@ -10,7 +11,7 @@ namespace Quill
     /// <summary>
     /// Conversions between the dynamic boxed values used by the binding system and the concrete
     /// types the renderer needs. Quill is loosely typed at the expression level, so everything is a
-    /// double / bool / string / Color until it is consumed.
+    /// double / bool / string / Color / list (<c>List&lt;object&gt;</c>) / object until it is consumed.
     /// </summary>
     public static class QuillConvert
     {
@@ -37,7 +38,7 @@ namespace Quill
             {
                 case null: return false;
                 case bool b: return b;
-                case double d: return d != 0;
+                case double d: return d != 0 && !double.IsNaN(d);
                 case string s: return !string.IsNullOrEmpty(s) && s != "false";
                 default: return true;
             }
@@ -45,10 +46,30 @@ namespace Quill
 
         public static string ToStr(object v)
         {
-            if (v == null) return string.Empty;
-            if (v is double d) return d.ToString(CultureInfo.InvariantCulture);
-            if (v is bool b) return b ? "true" : "false";
-            return v.ToString();
+            switch (v)
+            {
+                case null: return string.Empty;
+                case string s: return s;
+                case double d: return FormatNumber(d);
+                case bool b: return b ? "true" : "false";
+                case Color c: return QuillColor.Format(c);
+                case List<object> list:
+                {
+                    var parts = new string[list.Count];
+                    for (int i = 0; i < list.Count; i++) parts[i] = ToStr(list[i]);
+                    return string.Join(",", parts);
+                }
+                default: return v.ToString();
+            }
+        }
+
+        /// <summary>JavaScript-style number text: integers without a decimal point, NaN/Infinity by name.</summary>
+        public static string FormatNumber(double d)
+        {
+            if (double.IsNaN(d)) return "NaN";
+            if (double.IsPositiveInfinity(d)) return "Infinity";
+            if (double.IsNegativeInfinity(d)) return "-Infinity";
+            return d.ToString(CultureInfo.InvariantCulture);
         }
 
         public static Color ToColor(object v)

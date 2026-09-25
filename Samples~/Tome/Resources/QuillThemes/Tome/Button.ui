@@ -1,0 +1,66 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Button — Tome: an ink-ruled vellum plate lettered in Cinzel; the highlighted one is a wax-red
+// seal. Same API in every theme: text, highlighted, enabled, down / hovered (read-only), signal clicked
+Item {
+    id: control
+
+    property string text: "Button"
+    property bool highlighted: false
+    property bool enabled: true
+    property bool down: area.pressed
+    property bool hovered: area.containsMouse
+    signal clicked
+
+    width: Math.max(112, label.contentWidth + 44)
+    height: 42
+    opacity: control.enabled ? 1 : 0.45
+
+    Rectangle {
+        y: control.down ? 1 : 3
+        width: control.width
+        height: control.height
+        radius: Theme.radius
+        color: "#3b240f55"
+    }
+    Rectangle {
+        id: plate
+        y: control.down ? 2 : 0
+        width: control.width
+        height: control.height
+        radius: Theme.radius
+        color: control.highlighted ? (control.hovered ? Qt.lighter(Theme.accent, 1.15) : Theme.accent)
+                                   : (control.hovered ? Theme.controlHover : Theme.control)
+        border.width: Theme.borderWidth
+        border.color: control.highlighted ? Qt.darker(Theme.accent, 1.5) : Theme.border
+        Behavior on color { ColorAnimation { duration: Theme.duration } }
+
+        Rectangle {
+            x: 4; y: 4
+            width: plate.width - 8
+            height: plate.height - 8
+            radius: 1
+            color: "#00000000"
+            border.width: 1
+            border.color: control.highlighted ? Qt.alpha(Theme.accentText, 0.45) : Qt.alpha(Theme.border, 0.4)
+        }
+        Text {
+            id: label
+            text: control.text
+            color: control.highlighted ? Theme.accentText : Theme.text
+            fontSize: 15
+            font.family: Theme.titleFont
+            font.letterSpacing: 1
+            anchors.centerIn: parent
+        }
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onClicked: control.clicked()
+    }
+}

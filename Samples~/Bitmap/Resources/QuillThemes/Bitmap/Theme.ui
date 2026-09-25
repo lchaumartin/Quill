@@ -1,0 +1,35 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Bitmap — pixel art: notched corners, bevelled blocks, a 16-colour palette (Sweetie 16) and pixel
+// fonts. Made for 2D retro games. Everything is drawn on a grid of Theme.pixel screen pixels.
+QtObject {
+    property string name: "Bitmap"
+    property string tagline: "Chunky pixels and a 16-colour palette, for 2D retro games."
+
+    property color background: "#1a1c2c"
+    property color surface: "#333c57"
+    property color border: "#0d0e18"          // the outline around every block
+    property color control: "#566c86"
+    property color controlHover: "#6f86a3"
+    property color accent: "#ffcd75"          // gold
+    property color accentText: "#1a1c2c"
+    property color text: "#f4f4f4"
+    property color textMuted: "#94b0c2"
+
+    property real radius: 0
+    property real borderWidth: 3
+    property real padding: 24
+    property real spacing: 14
+
+    // Press Start 2P for titles, Pixelify Sans for text (SIL Open Font License: see the sample's Licenses folder)
+    property string font: "QuillThemes/Bitmap/Fonts/PixelifySans-Regular"
+    property string titleFont: "QuillThemes/Bitmap/Fonts/PressStart2P-Regular"
+    property real fontSize: 18
+    property real titleSize: 24
+
+    property int duration: 0                  // pixels don't tween
+
+    // Bitmap only: the size of one art pixel, in screen pixels.
+    property real pixel: 3
+}

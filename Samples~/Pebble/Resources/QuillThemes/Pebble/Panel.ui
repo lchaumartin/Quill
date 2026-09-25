@@ -1,0 +1,25 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Panel — Pebble: a rounded clay card floating on a wide, soft shadow.
+Item {
+    id: panel
+
+    width: 340
+    height: 200
+
+    Rectangle {
+        x: 4; y: 14
+        width: panel.width - 8
+        height: panel.height
+        radius: Theme.radius * 1.4
+        softness: 36
+        color: Theme.shadow
+    }
+    Rectangle {
+        width: panel.width
+        height: panel.height
+        radius: Theme.radius * 1.4
+        color: Theme.surface
+    }
+}

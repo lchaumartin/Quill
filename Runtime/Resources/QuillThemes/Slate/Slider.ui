@@ -1,0 +1,75 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Slider — Slate. Same API in every theme:
+//   value, from, to (real), step (real, 0 = continuous), enabled (bool)
+//   position (real 0..1, read-only), pressed (bool, read-only), signal moved
+// Use:  Slider { width: 280; from: 0; to: 100; step: 5; value: 70; onMoved: volume = value }
+Item {
+    id: control
+
+    property real value: 0
+    property real from: 0
+    property real to: 1
+    property real step: 0
+    property bool enabled: true
+    property bool pressed: area.pressed
+    property real position: control.to > control.from ? Math.clamp((control.value - control.from) / (control.to - control.from), 0, 1) : 0
+    signal moved
+
+    width: 240
+    height: 28
+    opacity: control.enabled ? 1 : 0.4
+
+    property real knob: 18
+
+    // Pointer x -> value (snapped to `step`); emits `moved` when it changes.
+    function setFromX(px) {
+        var t = Math.clamp((px - control.knob / 2) / Math.max(1, control.width - control.knob), 0, 1)
+        var v = control.from + t * (control.to - control.from)
+        if (control.step > 0) v = control.from + Math.round((v - control.from) / control.step) * control.step
+        if (v != control.value) { control.value = v; control.moved() }
+    }
+
+    Rectangle {
+        id: track
+        x: control.knob / 2
+        width: control.width - control.knob
+        height: 6
+        radius: 3
+        anchors.verticalCenter: parent.verticalCenter
+        color: Theme.control
+        border.width: Theme.borderWidth
+        border.color: Theme.border
+
+        Rectangle {
+            width: Math.max(track.height, track.width * control.position)
+            height: track.height
+            radius: track.radius
+            color: Theme.accent
+            visible: control.position > 0
+        }
+    }
+
+    Rectangle {
+        property real size: control.knob + (area.pressed ? 4 : area.containsMouse ? 2 : 0)
+        Behavior on size { NumberAnimation { duration: Theme.duration; easing.type: Easing.OutCubic } }
+        width: size
+        height: size
+        radius: size / 2
+        x: control.knob / 2 + control.position * track.width - size / 2
+        anchors.verticalCenter: parent.verticalCenter
+        color: Theme.text
+        border.width: 3
+        border.color: Theme.accent
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onPressed: control.setFromX(mouse.x)
+        onPositionChanged: { if (area.pressed) control.setFromX(mouse.x) }
+    }
+}

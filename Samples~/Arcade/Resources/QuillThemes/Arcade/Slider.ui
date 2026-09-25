@@ -1,0 +1,76 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Slider — Arcade: a thin magenta rail, a glowing cyan run and a square cyan knob.
+// Same API in every theme: value, from, to, step, enabled, position / pressed (read-only), signal moved
+Item {
+    id: control
+
+    property real value: 0
+    property real from: 0
+    property real to: 1
+    property real step: 0
+    property bool enabled: true
+    property bool pressed: area.pressed
+    property real position: control.to > control.from ? Math.clamp((control.value - control.from) / (control.to - control.from), 0, 1) : 0
+    signal moved
+
+    width: 240
+    height: 28
+    opacity: control.enabled ? 1 : 0.35
+
+    property real knob: 16
+    property real runW: control.position * (control.width - control.knob)
+
+    function setFromX(px) {
+        var t = Math.clamp((px - control.knob / 2) / Math.max(1, control.width - control.knob), 0, 1)
+        var v = control.from + t * (control.to - control.from)
+        if (control.step > 0) v = control.from + Math.round((v - control.from) / control.step) * control.step
+        if (v != control.value) { control.value = v; control.moved() }
+    }
+
+    Rectangle {
+        x: control.knob / 2
+        width: control.width - control.knob
+        height: 2
+        anchors.verticalCenter: parent.verticalCenter
+        color: Qt.alpha(Theme.border, 0.6)
+    }
+    Rectangle {
+        x: control.knob / 2 - 2
+        width: control.runW + 4
+        height: 10
+        anchors.verticalCenter: parent.verticalCenter
+        softness: 10
+        color: Qt.alpha(Theme.accent, 0.6 * Theme.glow)
+        visible: control.runW > 0
+    }
+    Rectangle {
+        x: control.knob / 2
+        width: control.runW
+        height: 3
+        anchors.verticalCenter: parent.verticalCenter
+        color: Theme.accent
+    }
+
+    Rectangle {
+        property real size: control.knob + (area.pressed ? 4 : 0)
+        x: control.knob / 2 + control.runW - size / 2
+        anchors.verticalCenter: parent.verticalCenter
+        width: size
+        height: size
+        radius: 2
+        color: area.pressed || area.containsMouse ? Qt.lighter(Theme.accent, 1.3) : Theme.accent
+        border.width: 2
+        border.color: Theme.background
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onPressed: control.setFromX(mouse.x)
+        onPositionChanged: { if (area.pressed) control.setFromX(mouse.x) }
+    }
+}

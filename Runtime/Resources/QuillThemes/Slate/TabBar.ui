@@ -1,0 +1,59 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// TabBar — Slate. Same API in every theme:
+//   model (list of strings), currentIndex (int), enabled (bool), signal activated(int index)
+// Use:  TabBar { id: tabs; model: ["Video", "Audio", "Controls"] }   …   visible: tabs.currentIndex == 1
+Rectangle {
+    id: control
+
+    property var model: []
+    property int currentIndex: 0
+    property bool enabled: true
+    signal activated(int index)
+
+    width: row.width + 8
+    height: 40
+    radius: Theme.radius
+    color: Theme.control
+    border.width: Theme.borderWidth
+    border.color: Theme.border
+    opacity: control.enabled ? 1 : 0.4
+
+    Row {
+        id: row
+        x: 4
+        y: 4
+        spacing: 4
+
+        Repeater {
+            model: control.model
+
+            Rectangle {
+                width: Math.max(64, tabLabel.contentWidth + 28)
+                height: 32
+                radius: Math.max(0, Theme.radius - 3)
+                color: index == control.currentIndex ? Theme.accent
+                     : tabArea.containsMouse ? Theme.controlHover : Qt.alpha(Theme.controlHover, 0)
+                Behavior on color { ColorAnimation { duration: Theme.duration } }
+
+                Text {
+                    id: tabLabel
+                    text: modelData
+                    color: index == control.currentIndex ? Theme.accentText : tabArea.containsMouse ? Theme.text : Theme.textMuted
+                    fontSize: Theme.fontSize
+                    font.family: Theme.font
+                    anchors.centerIn: parent
+                }
+
+                MouseArea {
+                    id: tabArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: control.enabled
+                    onClicked: { control.currentIndex = index; control.activated(index) }
+                }
+            }
+        }
+    }
+}

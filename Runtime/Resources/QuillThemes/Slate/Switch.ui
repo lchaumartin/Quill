@@ -1,0 +1,61 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Switch — Slate. Same API in every theme:
+//   text (string, optional caption), checked (bool), enabled (bool), signal toggled
+// Use:  Switch { text: "V-Sync"; checked: true; onToggled: vsync = checked }
+Item {
+    id: control
+
+    property string text: ""
+    property bool checked: false
+    property bool enabled: true
+    signal toggled
+
+    width: track.width + (control.text.length > 0 ? 12 + label.contentWidth : 0)
+    height: Math.max(track.height, label.contentHeight)
+    opacity: control.enabled ? 1 : 0.4
+
+    // 0 = off, 1 = on, eased: the knob and the colours follow it.
+    property real position: control.checked ? 1 : 0
+    Behavior on position { NumberAnimation { duration: Theme.duration * 1.4; easing.type: Easing.OutCubic } }
+
+    Rectangle {
+        id: track
+        width: 42
+        height: 24
+        radius: 12
+        anchors.verticalCenter: parent.verticalCenter
+        color: Qt.tint(Theme.control, Qt.alpha(Theme.accent, control.position))
+        border.width: Theme.borderWidth * (1 - control.position)
+        border.color: area.containsMouse ? Qt.lighter(Theme.border, 1.6) : Theme.border
+
+        Rectangle {
+            width: 18
+            height: 18
+            radius: 9
+            anchors.verticalCenter: parent.verticalCenter
+            x: 3 + control.position * (track.width - width - 6)
+            color: control.position > 0.5 ? Theme.accentText : Theme.text
+        }
+    }
+
+    Text {
+        id: label
+        text: control.text
+        color: Theme.text
+        fontSize: Theme.fontSize
+        font.family: Theme.font
+        anchors.left: track.right
+        anchors.leftMargin: 12
+        anchors.verticalCenter: parent.verticalCenter
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onClicked: { control.checked = !control.checked; control.toggled() }
+    }
+}

@@ -1,0 +1,131 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// ColorPicker — an HSV colour picker: a saturation/value square, a hue strip, an optional alpha
+// strip, and a swatch with the hex value. Drawn by the Quill/ColorField shader. Shared by every
+// theme (themes don't need their own): corners, text and type come from the theme's palette.
+// Public API: `color` (read it, or set it from outside), `showAlpha`,
+//             signal `moved(color color)` on every user change, function `pick(h, s, v, a)`.
+// Use:  ColorPicker { id: picker; color: "#3a86ff"; onMoved: panel.color = color }
+Item {
+    id: control
+
+    property color color: "#3a86ff"
+    property bool showAlpha: true
+    signal moved(color color)
+
+    // HSV view of `color`. Greys and black carry no hue (or saturation), so the last picked ones
+    // are kept for them — dragging through the grey edge doesn't snap the hue back to red.
+    property real lastHue: 0
+    property real lastSat: 0
+    property real hue: control.color.hsvSaturation > 0 && control.color.hsvValue > 0 ? control.color.hsvHue : control.lastHue
+    property real sat: control.color.hsvValue > 0 ? control.color.hsvSaturation : control.lastSat
+    property real val: control.color.hsvValue
+    property real alpha: control.color.a
+
+    function pick(h, s, v, a) {
+        control.lastHue = h
+        control.lastSat = s
+        control.color = Qt.hsva(h, s, v, a)
+        control.moved(control.color)
+    }
+
+    width: 260
+    height: column.height
+
+    Column {
+        id: column
+        width: parent.width
+        spacing: 12
+
+        // Saturation (x) / value (y).
+        ShaderEffect {
+            width: parent.width
+            height: Math.round(parent.width * 0.75)
+            shader: "Quill/ColorField"
+            property real mode: 0
+            property real hue: control.hue
+            property real saturation: control.sat
+            property real value: control.val
+            property real cornerRadius: Math.min(10, Theme.radius)
+
+            MouseArea {
+                anchors.fill: parent
+                onPressed: control.pick(control.hue, Math.clamp(mouse.x / width, 0, 1), 1 - Math.clamp(mouse.y / height, 0, 1), control.alpha)
+                onPositionChanged: control.pick(control.hue, Math.clamp(mouse.x / width, 0, 1), 1 - Math.clamp(mouse.y / height, 0, 1), control.alpha)
+            }
+        }
+
+        // Hue.
+        ShaderEffect {
+            width: parent.width
+            height: 20
+            shader: "Quill/ColorField"
+            property real mode: 1
+            property real hue: control.hue
+            property real cornerRadius: Math.min(10, Theme.radius)
+
+            MouseArea {
+                anchors.fill: parent
+                onPressed: control.pick(Math.clamp(mouse.x / width, 0, 1), control.sat, control.val, control.alpha)
+                onPositionChanged: control.pick(Math.clamp(mouse.x / width, 0, 1), control.sat, control.val, control.alpha)
+            }
+        }
+
+        // Alpha.
+        ShaderEffect {
+            width: parent.width
+            height: 20
+            visible: control.showAlpha
+            shader: "Quill/ColorField"
+            property real mode: 2
+            property real hue: control.hue
+            property real saturation: control.sat
+            property real value: control.val
+            property real alpha: control.alpha
+            property real cornerRadius: Math.min(10, Theme.radius)
+
+            MouseArea {
+                anchors.fill: parent
+                onPressed: control.pick(control.hue, control.sat, control.val, Math.clamp(mouse.x / width, 0, 1))
+                onPositionChanged: control.pick(control.hue, control.sat, control.val, Math.clamp(mouse.x / width, 0, 1))
+            }
+        }
+
+        // Swatch + readout.
+        Item {
+            width: parent.width
+            height: 30
+
+            ShaderEffect {
+                id: swatch
+                width: 52
+                height: 30
+                shader: "Quill/ColorField"
+                property real mode: 3
+                property real hue: control.hue
+                property real saturation: control.sat
+                property real value: control.val
+                property real alpha: control.alpha
+                property real cornerRadius: Math.min(8, Theme.radius)
+            }
+            Text {
+                text: String(control.color).toUpperCase()
+                fontSize: Theme.fontSize
+                font.family: Theme.font
+                color: Theme.text
+                anchors.left: swatch.right
+                anchors.leftMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+                text: control.showAlpha ? Math.round(control.alpha * 100) + "%" : ""
+                fontSize: Math.round(Theme.fontSize * 0.87)
+                font.family: Theme.font
+                color: Theme.textMuted
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+    }
+}

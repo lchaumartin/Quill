@@ -1,0 +1,20 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Label — Vector: monospace; titles and headings in spaced capitals, headings in the accent.
+// Same API in every theme: text, kind: "title" | "heading" | "body" (default) | "caption"
+Text {
+    id: label
+
+    property string kind: "body"
+
+    color: label.kind == "heading" ? Theme.accent : label.kind == "caption" ? Theme.textMuted : Theme.text
+    font.family: Theme.font
+    font.capitalization: label.kind == "title" || label.kind == "heading" ? Font.AllUppercase : Font.MixedCase
+    font.letterSpacing: label.kind == "title" ? 6 : label.kind == "heading" ? 3 : 0
+    fontSize: label.kind == "title" ? Theme.titleSize
+            : label.kind == "heading" ? 14
+            : label.kind == "caption" ? 13
+            : Theme.fontSize
+    lineHeight: 1.3
+}

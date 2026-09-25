@@ -1,0 +1,35 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// Pop — comic-book: thick ink outlines, hard offset shadows, loud colours and Bangers headlines.
+// Buttons press down onto their shadow. Made for party, puzzle and comic-style games.
+QtObject {
+    property string name: "Pop"
+    property string tagline: "Thick ink and hard shadows, for party, puzzle and comic-style games."
+
+    property color background: "#ffd23f"      // comic yellow
+    property color surface: "#ffffff"
+    property color border: "#111111"          // ink
+    property color control: "#ffffff"
+    property color controlHover: "#fff3c4"
+    property color accent: "#ff3d7f"          // hot pink
+    property color accentText: "#ffffff"
+    property color text: "#111111"
+    property color textMuted: "#5b5347"
+
+    property real radius: 12
+    property real borderWidth: 3
+    property real padding: 26
+    property real spacing: 14
+
+    // Bangers for titles, Nunito ExtraBold for text (SIL Open Font License: see the sample's Licenses folder)
+    property string font: "QuillThemes/Pop/Fonts/Nunito-ExtraBold"
+    property string titleFont: "QuillThemes/Pop/Fonts/Bangers-Regular"
+    property real fontSize: 16
+    property real titleSize: 56
+
+    property int duration: 110
+
+    // Pop only: how far the hard shadows fall, px.
+    property real shadowOffset: 5
+}
