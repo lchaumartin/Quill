@@ -6,6 +6,10 @@ Quill brings a clean declarative authoring model to Unity: real `.quill` text do
 property + binding** engine, **anchors-based layout**, reusable **components**, and a low-level
 renderer (no uGUI/Canvas) built around a single full-screen SDF pass plus lightweight textured layers.
 
+![The same Quill document in the eight themes: Slate, Frost, Arcade, Tome, Vector, Pebble, Bitmap and Pop](Documentation~/images/themes.jpg)
+
+*One document, eight themes — the gallery that ships with Quill. See [Themes](#themes).*
+
 ## Quick start
 
 1. Add Quill to your project (it runs on URP or the Built-in pipeline).
@@ -467,6 +471,25 @@ every control at once (the gallery's Accent panel does exactly that).
 | **Pebble** | soft clay, pastels, deep soft shadows, springy motion         | casual and mobile games                |
 | **Bitmap** | bevelled pixel blocks, a 16-colour palette, pixel fonts       | 2D retro games                         |
 | **Pop**    | thick ink, hard offset shadows, Bangers headlines             | party, puzzle, comic-style games       |
+
+<table>
+<tr>
+<td><img src="Documentation~/images/theme-slate.png" alt="Slate theme gallery"><br><b>Slate</b></td>
+<td><img src="Documentation~/images/theme-frost.png" alt="Frost theme gallery"><br><b>Frost</b></td>
+</tr>
+<tr>
+<td><img src="Documentation~/images/theme-arcade.png" alt="Arcade theme gallery"><br><b>Arcade</b></td>
+<td><img src="Documentation~/images/theme-tome.png" alt="Tome theme gallery"><br><b>Tome</b></td>
+</tr>
+<tr>
+<td><img src="Documentation~/images/theme-vector.png" alt="Vector theme gallery"><br><b>Vector</b></td>
+<td><img src="Documentation~/images/theme-pebble.png" alt="Pebble theme gallery"><br><b>Pebble</b></td>
+</tr>
+<tr>
+<td><img src="Documentation~/images/theme-bitmap.png" alt="Bitmap theme gallery"><br><b>Bitmap</b></td>
+<td><img src="Documentation~/images/theme-pop.png" alt="Pop theme gallery"><br><b>Pop</b></td>
+</tr>
+</table>
 
 Each sample has one scene, `<Theme> Gallery.unity`: a Quill Document showing the gallery
 (`Resources/QuillThemes/Gallery.quill` in the package) with that theme. The themes' fonts are free (SIL
