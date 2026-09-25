@@ -1,0 +1,45 @@
+# Builds the Quill editor tooling: the language server, the VS Code extension (.vsix) and the
+# Visual Studio extension (.vsix). Artifacts are attached to the run.
+name: Editor tooling
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ["Tooling~/**", "Runtime/Parsing/**", "Runtime/Scene/**", "Runtime/Core/**", ".github/workflows/tooling.yml"]
+
+jobs:
+  vscode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: "8.0.x" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - name: Build server + VS Code extension
+        run: ./build.sh
+        working-directory: "Tooling~"
+      - name: Check the package's own documents
+        run: dotnet "Tooling~/dist/server/Quill.LanguageServer.dll" --check .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quill-tooling
+          path: |
+            Tooling~/dist/*.vsix
+            Tooling~/dist/server/
+
+  visualstudio:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: "8.0.x" }
+      - uses: microsoft/setup-msbuild@v2
+      - name: Build the language server
+        run: dotnet publish "Tooling~/LanguageServer/Quill.LanguageServer.csproj" -c Release -o "Tooling~/dist/server" -p:DebugType=none
+      - name: Build the Visual Studio extension
+        run: msbuild /restore "Tooling~/visualstudio/Quill.VisualStudio.csproj" /p:Configuration=Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quill-visualstudio
+          path: Tooling~/visualstudio/bin/Release/*.vsix
