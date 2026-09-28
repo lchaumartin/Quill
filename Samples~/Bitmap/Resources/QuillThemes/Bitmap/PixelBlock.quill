@@ -13,8 +13,8 @@ Item {
     property bool bevel: true
     property real p: Theme.pixel
 
-    property color light: Qt.lighter(block.color, 1.3)
-    property color dark: Qt.darker(block.color, 1.45)
+    property color light: Color.lighter(block.color, 1.3)
+    property color dark: Color.darker(block.color, 1.45)
 
     // Outline: a plus shape (a notch at each corner).
     Rectangle { x: block.p; width: block.width - 2 * block.p; height: block.height; color: block.outline }

@@ -20,7 +20,7 @@ of scope. It is the reference for the asset's feature surface.
 - Markup pipeline: lexer → recursive-descent parser → Pratt expression parser → element tree.
 - Expressions: arithmetic, comparisons (incl. `===`), `&& || !` returning operands, bit flags,
   ternary, hex/exponent numbers, lists with indexing, grouped-property access, `Math.*`, colour
-  functions (`Qt.rgba/hsva/hsla/lighter/darker/tint/alpha`) and channels (`c.hsvHue`…), number /
+  functions (`Color.rgba/hsva/hsla/lighter/darker/tint/alpha`) and channels (`c.hsvHue`…), number /
   string / list methods (`toFixed`, `split`, `arg`, `join`…), globals (`parseInt`, `qsTr`…), enums.
 - Statements in handlers, functions and scripts: assignments incl. `+= -= *= /= ++ --`, `if/else`,
   `for`, `while`, `break`, `continue`, `return`, `var` locals, calls, `console.*`.

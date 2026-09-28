@@ -25,7 +25,7 @@ Row {
                 width: parent.width
                 height: parent.height
                 radius: Theme.radius
-                color: tabArea.containsMouse ? Theme.controlHover : Qt.alpha(Theme.controlHover, 0)
+                color: tabArea.containsMouse ? Theme.controlHover : Color.alpha(Theme.controlHover, 0)
             }
             Text {
                 id: tabLabel
@@ -42,7 +42,7 @@ Row {
                 width: parent.width - 16
                 height: 8
                 softness: 8
-                color: Qt.alpha(Theme.accent, 0.8 * Theme.glow)
+                color: Color.alpha(Theme.accent, 0.8 * Theme.glow)
                 visible: index == control.currentIndex
             }
             Rectangle {

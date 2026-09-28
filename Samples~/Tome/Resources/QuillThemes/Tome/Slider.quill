@@ -38,7 +38,7 @@ Item {
             y: control.height / 2 + 4
             width: 1
             height: index % 5 == 0 || control.ticks <= 10 ? 6 : 3
-            color: Qt.alpha(Theme.border, 0.7)
+            color: Color.alpha(Theme.border, 0.7)
         }
     }
     Rectangle {
@@ -62,9 +62,9 @@ Item {
         width: size
         height: size
         radius: size / 2
-        color: area.containsMouse || area.pressed ? Qt.lighter(Theme.accent, 1.15) : Theme.accent
+        color: area.containsMouse || area.pressed ? Color.lighter(Theme.accent, 1.15) : Theme.accent
         border.width: 2
-        border.color: Qt.darker(Theme.accent, 1.6)
+        border.color: Color.darker(Theme.accent, 1.6)
 
         Rectangle {
             width: parent.width * 0.4
@@ -73,7 +73,7 @@ Item {
             anchors.centerIn: parent
             color: "#00000000"
             border.width: 1
-            border.color: Qt.alpha(Theme.accentText, 0.6)
+            border.color: Color.alpha(Theme.accentText, 0.6)
         }
     }
 

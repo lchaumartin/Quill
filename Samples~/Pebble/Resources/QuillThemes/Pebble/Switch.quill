@@ -24,7 +24,7 @@ Item {
         height: 30
         radius: 15
         anchors.verticalCenter: parent.verticalCenter
-        color: Qt.tint(area.containsMouse ? Theme.controlHover : Theme.control, Qt.alpha(Theme.accent, Math.clamp(control.position, 0, 1)))
+        color: Color.tint(area.containsMouse ? Theme.controlHover : Theme.control, Color.alpha(Theme.accent, Math.clamp(control.position, 0, 1)))
 
         Rectangle {
             x: 4 + control.position * (track.width - 30) + 1

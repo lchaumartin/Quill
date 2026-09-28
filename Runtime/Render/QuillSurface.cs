@@ -120,11 +120,11 @@ namespace Quill
             _text.Render(_textList, w, h);
         }
 
-        /// <summary>Wheel units per notch handed to Quill (QML's angleDelta convention).</summary>
+        /// <summary>Wheel units per notch handed to Quill (angle-delta convention: 120 per notch).</summary>
         private const float WheelNotch = 120f;
 
         // Reads the mouse from whichever input backend is enabled. Y is flipped to top-left origin.
-        // The wheel is reported in QML angle-delta units (120 per notch, +y = away from the user).
+        // The wheel is reported in angle-delta units (120 per notch, +y = away from the user).
         private static void ReadPointer(out float px, out float py, out bool down, out float wheelX, out float wheelY)
         {
             float mx = 0, my = 0; down = false;

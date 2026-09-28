@@ -3,7 +3,7 @@
 //
 // Pebble — soft clay: warm pastels, round shapes, deep soft shadows and squishy, springy motion.
 // Made for casual and mobile games.
-QtObject {
+Object {
     property string name: "Pebble"
     property string tagline: "Soft clay and pastels, for casual and mobile games."
 

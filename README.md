@@ -2,9 +2,11 @@
 
 *Free and open source under the [MIT License](LICENSE.md). Scope and roadmap: [`SCOPE.md`](SCOPE.md).*
 
-Quill brings a clean declarative authoring model to Unity: real `.quill` text documents, a **reactive
-property + binding** engine, **anchors-based layout**, reusable **components**, and a low-level
-renderer (no uGUI/Canvas) built around a single full-screen SDF pass plus lightweight textured layers.
+Quill brings a clean declarative authoring model to Unity — heavily inspired by Qt Quick and its QML
+language (see [Inspiration](#inspiration-qt-and-qml)) — with real `.quill` text documents, a
+**reactive property + binding** engine, **anchors-based layout**, reusable **components**, and a
+low-level renderer (no uGUI/Canvas) built around a single full-screen SDF pass plus lightweight
+textured layers.
 
 ![The same Quill document in the eight themes: Slate, Frost, Arcade, Tome, Vector, Pebble, Bitmap and Pop](Documentation~/images/themes.jpg)
 
@@ -48,7 +50,7 @@ generated solution. Setup per editor: [`Tooling~/README.md`](Tooling~/README.md)
 | `Repeater`        | `model` (a count or a list, live); delegate gets `index` / `modelData`; `count`, `itemAt(i)` |
 | `MouseArea`       | `enabled`, `hoverEnabled`, reactive `pressed` / `containsMouse` / `mouseX` / `mouseY`, `drag.*`; `on*` signals |
 | `ShaderEffect`    | `shader` + any custom property, forwarded as a uniform                             |
-| `QtObject`        | — (a plain object for grouping properties, e.g. a theme palette)                   |
+| `Object`          | — (a plain object for grouping properties, e.g. a theme palette)                   |
 | `Timer`           | `interval`, `running`, `repeat`, `triggeredOnStart`; `onTriggered`; `start/stop/restart()` |
 | Animations        | `NumberAnimation`, `PropertyAnimation`, `ColorAnimation`, `SpringAnimation`, `SmoothedAnimation`, `PauseAnimation`, `SequentialAnimation`, `ParallelAnimation`, `ScriptAction`, `PropertyAction` |
 | `Behavior`        | `Behavior on prop { Animation }`, `enabled`                                        |
@@ -614,8 +616,8 @@ Expressions are a JavaScript subset:
 - member access, including grouped properties (`rect.border.color`, `drag.active`, `font.bold`);
 - `Math.*` (`abs min max floor ceil round trunc sign sqrt pow exp log log2 log10 sin cos tan asin
   acos atan atan2 hypot random clamp`, `Math.PI`, `Math.E`);
-- **colours**: `Qt.rgba(r, g, b, a)`, `Qt.hsva(h, s, v, a)`, `Qt.hsla(h, s, l, a)`, `Qt.lighter(c, f)`,
-  `Qt.darker(c, f)`, `Qt.tint(base, over)`, `Qt.alpha(c, a)`, `Qt.colorEqual(a, b)`; channels
+- **colours**: `Color.rgba(r, g, b, a)`, `Color.hsva(h, s, v, a)`, `Color.hsla(h, s, l, a)`, `Color.lighter(c, f)`,
+  `Color.darker(c, f)`, `Color.tint(base, over)`, `Color.alpha(c, a)`, `Color.colorEqual(a, b)`; channels
   `c.r .g .b .a`, `c.hsvHue .hsvSaturation .hsvValue`, `c.hslHue .hslSaturation .hslLightness`
   (all 0..1; hue is -1 for greys). A colour prints as `#rrggbb` (or `#rrggbbaa`);
 - **value methods**: numbers `toFixed(n)`, `toPrecision(n)`, `toString(radix)`; strings `length`,
@@ -624,7 +626,7 @@ Expressions are a JavaScript subset:
   `"%1 of %2".arg(a).arg(b)`; lists `indexOf`, `includes`, `join`, `slice`, `concat`;
 - globals `parseInt`, `parseFloat`, `Number`, `String`, `Boolean`, `isNaN`, `isFinite`, `qsTr`;
 - enums: `Easing.*`, `Animation.Infinite`, `Text.AlignHCenter` / `Text.WordWrap` / `Text.ElideRight`…,
-  `Drag.XAxis`…, `Qt.AlignLeft`…, `Qt.LeftButton`…
+  `Drag.XAxis`…, `Quill.AlignLeft`…, `Quill.LeftButton`…
 
 Custom properties: `property real phase: 0` (also `int`, `bool`, `string`, `color`, `var`, `list<T>`,
 `alias`). Colours accept `"red"`, `"#RRGGBB"` and `"#RRGGBBAA"`.
@@ -659,7 +661,7 @@ of that name in scope. Loops are capped at 100 000 iterations and recursion at 6
               │           text sizing → handlers → repeaters → behaviors / states / animations →
               │           Component.onCompleted  (the same pipeline builds Repeater delegates later)
               ├─ Core/    QuillProperty (reactive cell) + Binding (auto dependency tracking) + queue,
-              │             Builtins (Math/Qt/methods), Interpreter (statements), QuillColor
+              │             Builtins (Math/Color/methods), Interpreter (statements), QuillColor
               ├─ Scene/   QuillObject / QuillItem / elements + Anchors + Positioners + Animations
               │             (jobs, easing, behaviors, states & transitions, timers) + input
               ├─ QuillDocument / QuillThemes   the scene component; themes (Resources/QuillThemes)
@@ -684,7 +686,7 @@ of that name in scope. Loops are capped at 100 000 iterations and recursion at 6
 
 - **New element**: subclass `QuillItem`, seed defaults, `QuillTypeRegistry.Register(...)`; add a draw path
   if it isn't a rectangle.
-- **More built-ins**: value methods and `Qt.*` functions live in `Core/Builtins.cs`; statements in
+- **More built-ins**: value methods and `Color.*` functions live in `Core/Builtins.cs`; statements in
   `Core/Interpreter.cs`; new syntax goes through `Parser` + the AST.
 - **Custom methods on an element**: override `QuillObject.TryInvokeMethod` (see `QuillTimer`).
 
@@ -694,13 +696,29 @@ Keyboard focus, `Keys` handlers and a `TextInput`; clipping and a `Flickable`/sc
 `ShaderEffectSource`; `ListModel`; rich text; `Loader`; more theme controls (`TextField`, `Dropdown`,
 `Dialog`, `Tooltip`).
 
-## Prior art
+## Inspiration: Qt and QML
 
-Quill's authoring model — declarative object trees, reactive property bindings, anchor-based layout,
-components and signals — follows a design lineage that will be familiar to anyone who has written
-QML. Quill is an independent implementation written for Unity: it is not affiliated with or endorsed
-by any third-party UI toolkit, and no code is derived from one. It is likewise independent of uGUI
-and UI Toolkit.
+Quill is heavily inspired by [Qt Quick](https://doc.qt.io/qt-6/qtquick-index.html) and its QML
+language, from the Qt Project and The Qt Company. Its authoring model — declarative object trees,
+reactive property bindings, anchor-based layout, positioners, components with signals and handlers,
+states and transitions, `Behavior`s and the animation types — follows QML closely, and most element
+and property names will be familiar to anyone who has written it. If you know QML, you already know
+most of Quill, and QML's documentation is a good companion to this one.
+
+Quill is an independent implementation, written from scratch in C# for Unity. It contains no Qt code,
+does not use or require Qt, and is not affiliated with, sponsored or endorsed by The Qt Company or the
+Qt Project. It is likewise independent of uGUI and UI Toolkit.
+
+To keep that distinction clear, Quill's API doesn't use the Qt name. Coming from QML:
+
+| QML                                                        | Quill                                                            |
+|------------------------------------------------------------|------------------------------------------------------------------|
+| `.qml` documents                                           | `.quill` documents                                               |
+| `QtObject { … }`                                           | `Object { … }`                                                   |
+| `Qt.rgba()`, `Qt.lighter()`, `Qt.tint()`… (colour helpers) | `Color.rgba()`, `Color.lighter()`, `Color.tint()`…               |
+| `Qt.AlignLeft`…, `Qt.LeftButton`…, `Qt.Horizontal`…        | `Quill.AlignLeft`…, `Quill.LeftButton`…, `Quill.Horizontal`… (alignment is also on `Text.*`) |
+
+*Qt is a registered trademark of The Qt Company Ltd. and its subsidiaries.*
 
 ## Contributing
 

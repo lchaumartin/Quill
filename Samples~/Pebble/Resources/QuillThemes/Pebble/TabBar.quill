@@ -44,7 +44,7 @@ Rectangle {
                     width: parent.width
                     height: parent.height
                     radius: 18
-                    color: parent.current ? "#ffffff" : tabArea.containsMouse ? Theme.controlHover : Qt.alpha(Theme.controlHover, 0)
+                    color: parent.current ? "#ffffff" : tabArea.containsMouse ? Theme.controlHover : Color.alpha(Theme.controlHover, 0)
                 }
                 Text {
                     id: tabLabel

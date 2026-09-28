@@ -198,7 +198,7 @@ Rectangle {
                     }
                     Button {
                         text: "Restore"
-                        enabled: !Qt.colorEqual(Theme.accent, root.startAccent)
+                        enabled: !Color.colorEqual(Theme.accent, root.startAccent)
                         onClicked: {
                             Theme.accent = root.startAccent
                             picker.color = root.startAccent

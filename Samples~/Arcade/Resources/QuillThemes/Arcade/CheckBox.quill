@@ -31,7 +31,7 @@ Item {
             anchors.centerIn: parent
             radius: 2
             softness: 12
-            color: Qt.alpha(Theme.accent, 0.8 * Theme.glow)
+            color: Color.alpha(Theme.accent, 0.8 * Theme.glow)
             visible: control.checked
         }
         Rectangle {

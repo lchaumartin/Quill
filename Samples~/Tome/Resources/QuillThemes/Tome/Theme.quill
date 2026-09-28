@@ -3,7 +3,7 @@
 //
 // Tome — ink on parchment: double-ruled frames, Cinzel capitals and a wax-red accent. Made for RPG
 // and fantasy inventories, quest logs and dialogue.
-QtObject {
+Object {
     property string name: "Tome"
     property string tagline: "Ink on parchment, for RPG inventories, quest logs and dialogue."
 

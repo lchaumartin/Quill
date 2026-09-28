@@ -6,7 +6,7 @@
 // This file is the theme's palette. Documents and controls read it through the global `Theme`
 // (`color: Theme.accent`), and it stays live: assign `Theme.accent = "#ff5a5f"` at runtime and every
 // control follows. Every theme declares the same properties below (it may add its own).
-QtObject {
+Object {
     property string name: "Slate"
     property string tagline: "Clean and flat, for settings screens, tools and simulations."
 

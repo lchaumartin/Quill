@@ -30,10 +30,10 @@ Item {
         width: control.width
         height: control.height
         radius: Theme.radius
-        color: control.highlighted ? (control.hovered ? Qt.lighter(Theme.accent, 1.15) : Theme.accent)
+        color: control.highlighted ? (control.hovered ? Color.lighter(Theme.accent, 1.15) : Theme.accent)
                                    : (control.hovered ? Theme.controlHover : Theme.control)
         border.width: Theme.borderWidth
-        border.color: control.highlighted ? Qt.darker(Theme.accent, 1.5) : Theme.border
+        border.color: control.highlighted ? Color.darker(Theme.accent, 1.5) : Theme.border
         Behavior on color { ColorAnimation { duration: Theme.duration } }
 
         Rectangle {
@@ -43,7 +43,7 @@ Item {
             radius: 1
             color: "#00000000"
             border.width: 1
-            border.color: control.highlighted ? Qt.alpha(Theme.accentText, 0.45) : Qt.alpha(Theme.border, 0.4)
+            border.color: control.highlighted ? Color.alpha(Theme.accentText, 0.45) : Color.alpha(Theme.border, 0.4)
         }
         Text {
             id: label

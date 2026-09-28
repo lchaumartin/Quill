@@ -7,7 +7,7 @@ Language support for [Quill](https://github.com/leochaumartin/quill) `.quill` UI
   with "did you mean" suggestions.
 - **Completion**: elements and the project's components (theme controls included), each type's
   properties and `on…` handlers, ids and their members, the `Theme` palette (with colours), enums
-  (`Easing.`, `Text.`, `Font.`…), `Math.` and `Qt.` functions.
+  (`Easing.`, `Text.`, `Font.`…), `Math.` and `Color.` functions.
 - **Hover** docs for elements, components (their header comment), properties, signals and palette
   values in every theme.
 - **Go to definition** for components, ids, properties and `Theme.*`; **outline** and **folding**.

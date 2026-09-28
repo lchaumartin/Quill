@@ -14,7 +14,7 @@ namespace Quill
     /// </summary>
     public static class TextLayout
     {
-        // QML Text.WrapMode / Text.TextElideMode values.
+        // Text.wrapMode / Text.elide values (Text.WordWrap…, Text.ElideRight…).
         public const int NoWrap = 0, WordWrap = 1, WrapAnywhere = 3, Wrap = 4;
         public const int ElideNone = 0, ElideLeft = 1, ElideMiddle = 2, ElideRight = 3;
 

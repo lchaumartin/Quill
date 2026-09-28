@@ -24,7 +24,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         color: control.checked ? Theme.accent : Theme.control
         border.width: control.checked ? 0 : Theme.borderWidth
-        border.color: area.containsMouse ? Qt.lighter(Theme.border, 1.6) : Theme.border
+        border.color: area.containsMouse ? Color.lighter(Theme.border, 1.6) : Theme.border
         Behavior on color { ColorAnimation { duration: Theme.duration } }
 
         // The mark grows in from the centre.

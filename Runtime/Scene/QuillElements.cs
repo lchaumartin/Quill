@@ -88,7 +88,7 @@ namespace Quill
     /// <c>font.letterSpacing</c> (extra pixels between characters) and <c>font.capitalization</c>
     /// (<c>Font.AllUppercase</c>…). The renderer measures it and writes
     /// back `contentWidth` / `contentHeight` / `lineCount`; unless the document sets `width` / `height`,
-    /// the item takes its content size (QML's implicit size), so anchors work off the real extent.
+    /// the item takes its content size (its implicit size), so anchors work off the real extent.
     /// </summary>
     public sealed class QuillText : QuillItem
     {
@@ -343,7 +343,7 @@ namespace Quill
             new Dictionary<string, Func<QuillItem>>
             {
                 { "Item", () => new QuillItem() },
-                { "QtObject", () => new QuillNonVisual() },
+                { "Object", () => new QuillNonVisual() },
                 { "Rectangle", () => new QuillRectangle() },
                 { "Text", () => new QuillText() },
                 { "Image", () => new QuillImage() },

@@ -24,7 +24,7 @@ Item {
         height: 26
         radius: 9
         anchors.verticalCenter: parent.verticalCenter
-        color: Qt.tint(area.containsMouse ? Theme.controlHover : Theme.control, Qt.alpha(Theme.accent, Math.clamp(control.mark, 0, 1)))
+        color: Color.tint(area.containsMouse ? Theme.controlHover : Theme.control, Color.alpha(Theme.accent, Math.clamp(control.mark, 0, 1)))
 
         Rectangle {
             width: 10 * control.mark

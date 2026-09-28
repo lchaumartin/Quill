@@ -3,7 +3,7 @@
 //
 // Bitmap — pixel art: notched corners, bevelled blocks, a 16-colour palette (Sweetie 16) and pixel
 // fonts. Made for 2D retro games. Everything is drawn on a grid of Theme.pixel screen pixels.
-QtObject {
+Object {
     property string name: "Bitmap"
     property string tagline: "Chunky pixels and a 16-colour palette, for 2D retro games."
 

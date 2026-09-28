@@ -8,7 +8,7 @@ namespace Quill
 {
     /// <summary>
     /// Runs statements: signal handlers, functions and <c>ScriptAction</c> scripts. Assignments go
-    /// through <see cref="QuillProperty.SetValue"/>, so — as in QML — assigning breaks a binding and
+    /// through <see cref="QuillProperty.SetValue"/>, so assigning breaks a binding and
     /// a <c>Behavior</c> animates the change.
     /// </summary>
     public static class Interpreter

@@ -125,7 +125,7 @@ namespace Quill
             _pairs.Add((useSite, root));
 
             // Children added at the use-site were written in the enclosing scope, so their ids land
-            // there (as in QML: a Panel's content can be reached from the rest of the document).
+            // there (a Panel's content can be reached from the rest of the document).
             _idScope = useSiteInOwnScope ? root.LocalIds : outer;
             InstantiateChildren(useSite, root);
             _idScope = outer;
@@ -213,7 +213,7 @@ namespace Quill
                 Flush();
 
                 // on<Property>Changed handlers listen only once the initial values have settled —
-                // as in QML, building the tree doesn't count as a change.
+                // building the tree doesn't count as a change.
                 foreach (var (owner, key, propName) in changeHandlers)
                     owner.Property(propName).Changed += () => owner.Emit(key);
 
@@ -326,7 +326,7 @@ namespace Quill
                     var body = prop.Handler;
                     System.Action<object[]> handler = args => RunHandler(owner, key, body, args);
 
-                    // Internal and use-site handlers for the same signal both run, as in QML.
+                    // Internal and use-site handlers for the same signal both run.
                     obj.Handlers[key] = obj.Handlers.TryGetValue(key, out var existing) ? existing + handler : handler;
 
                     // on<Property>Changed: fire when the property changes (unless it is a declared signal).

@@ -14,7 +14,7 @@ Item {
         height: panel.height + 8
         radius: Theme.radius + 4
         softness: 26
-        color: Qt.alpha(Theme.border, 0.28 * Theme.glow)
+        color: Color.alpha(Theme.border, 0.28 * Theme.glow)
     }
     Rectangle {
         width: panel.width
@@ -22,7 +22,7 @@ Item {
         radius: Theme.radius
         color: Theme.surface
         border.width: Theme.borderWidth
-        border.color: Qt.alpha(Theme.border, 0.85)
+        border.color: Color.alpha(Theme.border, 0.85)
     }
     Rectangle {
         x: Theme.padding

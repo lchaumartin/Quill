@@ -20,3 +20,15 @@ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPO
 NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+## Acknowledgement
+
+Quill was heavily inspired by Qt Quick and the QML language, from the Qt Project and The Qt Company:
+its declarative object model, property bindings, anchors, components, states, transitions and
+animations follow their design. Quill is an independent implementation written for Unity; it
+contains no Qt source code and is not affiliated with or endorsed by The Qt Company. Qt is a
+registered trademark of The Qt Company Ltd. and its subsidiaries.
+
+This acknowledgement is informational and does not modify the license terms above.

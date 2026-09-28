@@ -105,7 +105,7 @@ namespace Quill.LanguageServer
         {
             var ext = System.IO.Path.GetExtension(path);
             if (ext.Equals(".quill", StringComparison.OrdinalIgnoreCase)) return true;
-            // Legacy .ui: only if it doesn't look like Qt Designer XML.
+            // Legacy .ui: only if it doesn't look like an XML UI form.
             if (ext.Equals(".ui", StringComparison.OrdinalIgnoreCase))
             {
                 try

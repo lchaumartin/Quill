@@ -24,7 +24,7 @@ ShaderEffect {
 
     property color restTint: Theme.control
     property color hoverTint: Theme.controlHover
-    property color activeTint: Qt.alpha(Theme.accent, 0.8)
+    property color activeTint: Color.alpha(Theme.accent, 0.8)
 
     property real hover: (pane.interactive && area.containsMouse) || pane.hot ? 1 : 0
     Behavior on hover { NumberAnimation { duration: Theme.duration; easing.type: Easing.OutCubic } }

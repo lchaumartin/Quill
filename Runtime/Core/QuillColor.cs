@@ -8,9 +8,9 @@ using UnityEngine;
 namespace Quill
 {
     /// <summary>
-    /// Colour maths behind <c>Qt.rgba/hsva/hsla/lighter/darker/tint</c>, colour channel access in
+    /// Colour maths behind <c>Color.rgba/hsva/hsla/lighter/darker/tint</c>, colour channel access in
     /// expressions (<c>c.hsvHue</c>, <c>c.a</c>) and colour interpolation in animations. All channels
-    /// are 0..1, hue included, as in QML. Pure C# (no engine calls) so it runs anywhere.
+    /// are 0..1, hue included. Pure C# (no engine calls) so it runs anywhere.
     /// </summary>
     public static class QuillColor
     {
@@ -33,7 +33,7 @@ namespace Quill
             return new Color((float)(r + m), (float)(g + m), (float)(b + m), (float)Clamp01(a));
         }
 
-        /// <summary>RGB to HSV. Hue is -1 for achromatic colours (greys), as in QML.</summary>
+        /// <summary>RGB to HSV. Hue is -1 for achromatic colours (greys).</summary>
         public static void ToHsv(Color c, out double h, out double s, out double v)
         {
             double r = c.r, g = c.g, b = c.b;
@@ -55,7 +55,7 @@ namespace Quill
             return FromHsv(h, sv, v, a);
         }
 
-        /// <summary>RGB to HSL. Hue is -1 for achromatic colours (greys), as in QML.</summary>
+        /// <summary>RGB to HSL. Hue is -1 for achromatic colours (greys).</summary>
         public static void ToHsl(Color c, out double h, out double s, out double l)
         {
             double r = c.r, g = c.g, b = c.b;
@@ -77,7 +77,7 @@ namespace Quill
             return h < 0 ? h + 1 : h;
         }
 
-        /// <summary>QML <c>Qt.lighter</c>: scale HSV value by <paramref name="factor"/>, spilling into saturation.</summary>
+        /// <summary><c>Color.lighter</c>: scale HSV value by <paramref name="factor"/>, spilling into saturation.</summary>
         public static Color Lighter(Color c, double factor = 1.5)
         {
             if (factor <= 0) return c;
@@ -88,7 +88,7 @@ namespace Quill
             return FromHsv(h, s, v, c.a);
         }
 
-        /// <summary>QML <c>Qt.darker</c>: divide HSV value by <paramref name="factor"/>.</summary>
+        /// <summary><c>Color.darker</c>: divide HSV value by <paramref name="factor"/>.</summary>
         public static Color Darker(Color c, double factor = 2.0)
         {
             if (factor <= 0) return c;
@@ -97,7 +97,7 @@ namespace Quill
             return FromHsv(h, s, v / factor, c.a);
         }
 
-        /// <summary>QML <c>Qt.tint</c>: <paramref name="tint"/> composited over <paramref name="baseColor"/> by its alpha.</summary>
+        /// <summary><c>Color.tint</c>: <paramref name="tint"/> composited over <paramref name="baseColor"/> by its alpha.</summary>
         public static Color Tint(Color baseColor, Color tint)
         {
             float a = tint.a, inv = 1f - a;
@@ -126,7 +126,7 @@ namespace Quill
             return a == 255 ? s : s + a.ToString("x2", CultureInfo.InvariantCulture);
         }
 
-        /// <summary>A channel of a colour by its QML name, or null if <paramref name="name"/> isn't one.</summary>
+        /// <summary>A channel of a colour by its name, or null if <paramref name="name"/> isn't one.</summary>
         public static object Channel(Color c, string name)
         {
             double h, s, v;

@@ -145,7 +145,7 @@ namespace Quill
 
             var running = a.Property("running");
             // A value source (`NumberAnimation on x`) runs unless told otherwise; a standalone
-            // animation waits for `running: true` or start(), as in QML.
+            // animation waits for `running: true` or start().
             if (!string.IsNullOrEmpty(a.OnProperty) && !running.HasBinding) running.SetAnimated(true);
 
             running.Changed += () =>

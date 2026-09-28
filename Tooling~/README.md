@@ -20,7 +20,7 @@ All three need a **.NET 8 (or later) runtime** to run the server (highlighting w
 - **Completion**: element types and the project's components (theme controls included, as
   snippets); the current object's properties and `on…` handlers; `anchors.` / `font.` / `border.`
   groups; ids and their members; the `Theme` palette (colours shown as swatches); enums (`Easing.`,
-  `Text.`, `Font.`, `Qt.`…) and `Math.` / `Qt.` functions; locals and signal parameters in handlers.
+  `Text.`, `Font.`, `Quill.`…) and `Math.` / `Color.` functions; locals and signal parameters in handlers.
   It keeps working while the file is mid-edit and doesn't parse.
 - **Hover**: built-in element and property docs, a component's header comment and API, signal
   parameters, and a `Theme.x` value in every installed theme.

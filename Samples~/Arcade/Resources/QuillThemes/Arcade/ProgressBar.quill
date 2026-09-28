@@ -28,7 +28,7 @@ Item {
                 radius: 1
                 color: index < control.lit ? Theme.accent : Theme.control
                 border.width: index < control.lit ? 0 : 1
-                border.color: Qt.alpha(Theme.border, 0.5)
+                border.color: Color.alpha(Theme.border, 0.5)
             }
         }
     }

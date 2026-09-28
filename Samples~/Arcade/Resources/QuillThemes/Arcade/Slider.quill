@@ -34,7 +34,7 @@ Item {
         width: control.width - control.knob
         height: 2
         anchors.verticalCenter: parent.verticalCenter
-        color: Qt.alpha(Theme.border, 0.6)
+        color: Color.alpha(Theme.border, 0.6)
     }
     Rectangle {
         x: control.knob / 2 - 2
@@ -42,7 +42,7 @@ Item {
         height: 10
         anchors.verticalCenter: parent.verticalCenter
         softness: 10
-        color: Qt.alpha(Theme.accent, 0.6 * Theme.glow)
+        color: Color.alpha(Theme.accent, 0.6 * Theme.glow)
         visible: control.runW > 0
     }
     Rectangle {
@@ -60,7 +60,7 @@ Item {
         width: size
         height: size
         radius: 2
-        color: area.pressed || area.containsMouse ? Qt.lighter(Theme.accent, 1.3) : Theme.accent
+        color: area.pressed || area.containsMouse ? Color.lighter(Theme.accent, 1.3) : Theme.accent
         border.width: 2
         border.color: Theme.background
     }

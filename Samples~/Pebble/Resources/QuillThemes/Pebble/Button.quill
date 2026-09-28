@@ -28,7 +28,7 @@ Item {
         height: control.height
         radius: control.height / 2
         softness: 12 + 6 * control.lift
-        color: control.highlighted ? Qt.alpha(Qt.darker(Theme.accent, 1.3), 0.45) : Theme.shadow
+        color: control.highlighted ? Color.alpha(Color.darker(Theme.accent, 1.3), 0.45) : Theme.shadow
         opacity: 0.6 + 0.4 * (control.lift + 1) / 2
     }
     Rectangle {
@@ -36,7 +36,7 @@ Item {
         width: control.width
         height: control.height
         radius: control.height / 2
-        color: control.highlighted ? (control.hovered ? Qt.lighter(Theme.accent, 1.06) : Theme.accent)
+        color: control.highlighted ? (control.hovered ? Color.lighter(Theme.accent, 1.06) : Theme.accent)
                                    : (control.hovered ? "#ffffff" : Theme.surface)
         Behavior on color { ColorAnimation { duration: Theme.duration } }
 

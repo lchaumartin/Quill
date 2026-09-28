@@ -3,7 +3,7 @@
 //
 // Arcade — neon on midnight purple: glowing outlines, hard corners, snappy motion. Made for racing,
 // rhythm and retro-wave games. Glows are soft Rectangles (`softness`) behind the shapes.
-QtObject {
+Object {
     property string name: "Arcade"
     property string tagline: "Neon on midnight, for racing, rhythm and retro-wave games."
 

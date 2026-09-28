@@ -204,7 +204,7 @@ namespace Quill
     }
 
     /// <summary>
-    /// SpringAnimation: damped spring physics toward the target, stepped at a fixed 16 ms like QML,
+    /// SpringAnimation: damped spring physics toward the target, stepped at a fixed 16 ms,
     /// so it feels the same at any frame rate. Retargeting keeps the current velocity.
     /// </summary>
     internal sealed class SpringJob : AnimJob, IRetargetable
@@ -545,7 +545,7 @@ namespace Quill
             if (job == null) return null;
 
             // Loops apply to self-running animations and to steps of a group (not to a Behavior's or
-            // a Transition's direct animation, which run once per change in QML).
+            // a Transition's direct animation, which run once per change).
             bool loopable = ctx.Changes == null && !ctx.HasTo;
             if (loopable && el.HasProperty("loops"))
             {

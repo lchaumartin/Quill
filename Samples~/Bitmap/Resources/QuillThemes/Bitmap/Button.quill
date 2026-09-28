@@ -33,7 +33,7 @@ Item {
         width: control.width
         height: control.height
         sunken: control.down
-        color: control.highlighted ? (control.hovered ? Qt.lighter(Theme.accent, 1.12) : Theme.accent)
+        color: control.highlighted ? (control.hovered ? Color.lighter(Theme.accent, 1.12) : Theme.accent)
                                    : (control.hovered ? Theme.controlHover : Theme.control)
 
         Text {

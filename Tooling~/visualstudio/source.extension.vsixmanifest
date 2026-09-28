@@ -5,7 +5,7 @@
     <DisplayName>Quill for Unity</DisplayName>
     <Description xml:space="preserve">Language support for Quill (.quill) UI documents: highlighting, diagnostics, completion, hover docs, go to definition and outline.</Description>
     <License>LICENSE.md</License>
-    <Tags>quill, unity, ui, qml</Tags>
+    <Tags>quill, unity, ui</Tags>
   </Metadata>
   <Installation>
     <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0,19.0)">

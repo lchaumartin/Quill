@@ -58,7 +58,7 @@
     "object": {
       "patterns": [
         {
-          "match": "\\b(Item|QtObject|Rectangle|Text|Image|Row|Column|Grid|Flow|MouseArea|ShaderEffect|Timer|Behavior|State|PropertyChanges|Transition|Repeater|NumberAnimation|PropertyAnimation|ColorAnimation|SpringAnimation|SmoothedAnimation|PauseAnimation|SequentialAnimation|ParallelAnimation|ScriptAction|PropertyAction)\\s+(on)\\s+([A-Za-z_][\\w.]*)\\s*(?=\\{)",
+          "match": "\\b(Item|Object|Rectangle|Text|Image|Row|Column|Grid|Flow|MouseArea|ShaderEffect|Timer|Behavior|State|PropertyChanges|Transition|Repeater|NumberAnimation|PropertyAnimation|ColorAnimation|SpringAnimation|SmoothedAnimation|PauseAnimation|SequentialAnimation|ParallelAnimation|ScriptAction|PropertyAction)\\s+(on)\\s+([A-Za-z_][\\w.]*)\\s*(?=\\{)",
           "captures": {
             "1": {
               "name": "support.class.quill"
@@ -86,7 +86,7 @@
           }
         },
         {
-          "match": "\\b(Item|QtObject|Rectangle|Text|Image|Row|Column|Grid|Flow|MouseArea|ShaderEffect|Timer|Behavior|State|PropertyChanges|Transition|Repeater|NumberAnimation|PropertyAnimation|ColorAnimation|SpringAnimation|SmoothedAnimation|PauseAnimation|SequentialAnimation|ParallelAnimation|ScriptAction|PropertyAction)\\s*(?=\\{)",
+          "match": "\\b(Item|Object|Rectangle|Text|Image|Row|Column|Grid|Flow|MouseArea|ShaderEffect|Timer|Behavior|State|PropertyChanges|Transition|Repeater|NumberAnimation|PropertyAnimation|ColorAnimation|SpringAnimation|SmoothedAnimation|PauseAnimation|SequentialAnimation|ParallelAnimation|ScriptAction|PropertyAction)\\s*(?=\\{)",
           "captures": {
             "1": {
               "name": "support.class.quill"
@@ -211,7 +211,7 @@
           "match": "\\b(parent|index|modelData)\\b"
         },
         {
-          "match": "\\b(Theme|Qt|Math|Easing|Text|Font|Drag|Animation|console)\\s*(\\.)\\s*([A-Za-z_]\\w*)",
+          "match": "\\b(Theme|Color|Quill|Math|Easing|Text|Font|Drag|Animation|console)\\s*(\\.)\\s*([A-Za-z_]\\w*)",
           "captures": {
             "1": {
               "name": "support.class.builtin.quill"

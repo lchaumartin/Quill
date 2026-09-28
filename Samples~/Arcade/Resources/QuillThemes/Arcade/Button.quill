@@ -28,14 +28,14 @@ Item {
         height: control.height + 6
         radius: Theme.radius + 3
         softness: 18
-        color: Qt.alpha(control.neon, 0.55 * control.lit * Theme.glow)
+        color: Color.alpha(control.neon, 0.55 * control.lit * Theme.glow)
     }
     Rectangle {
         width: control.width
         height: control.height
         radius: Theme.radius
-        color: control.highlighted ? (control.down ? Qt.lighter(Theme.accent, 1.3) : Theme.accent)
-                                   : (control.down ? Qt.alpha(Theme.border, 0.35) : control.hovered ? Theme.controlHover : Theme.control)
+        color: control.highlighted ? (control.down ? Color.lighter(Theme.accent, 1.3) : Theme.accent)
+                                   : (control.down ? Color.alpha(Theme.border, 0.35) : control.hovered ? Theme.controlHover : Theme.control)
         border.width: Theme.borderWidth
         border.color: control.neon
     }

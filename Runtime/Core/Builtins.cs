@@ -12,7 +12,7 @@ namespace Quill
 {
     /// <summary>
     /// The runtime library behind expressions: member and index access on every value type, calls
-    /// (<c>Math.*</c>, <c>Qt.*</c>, <c>console.*</c>, globals such as <c>parseInt</c>, object methods
+    /// (<c>Math.*</c>, <c>Color.*</c>, <c>console.*</c>, globals such as <c>parseInt</c>, object methods
     /// and functions, value methods such as <c>toFixed</c>), and JavaScript-style equality.
     /// </summary>
     public static class Builtins
@@ -112,7 +112,7 @@ namespace Quill
                 switch (id.Name)
                 {
                     case "Math": return MathBuiltins.Call(n.Name, args);
-                    case "Qt": return Qt(n.Name, args);
+                    case "Color": return ColorFunction(n.Name, args);
                     case "console": Console(n.Name, args); return null;
                 }
             }
@@ -187,9 +187,9 @@ namespace Quill
             }
         }
 
-        // ---- Qt.* (colours) -------------------------------------------------------------------------
+        // ---- Color.* (colours) ----------------------------------------------------------------------
 
-        public static object Qt(string name, object[] a)
+        public static object ColorFunction(string name, object[] a)
         {
             switch (name)
             {
@@ -208,7 +208,7 @@ namespace Quill
                 }
                 case "colorEqual": return QuillConvert.ToColor(Arg(a, 0)) == QuillConvert.ToColor(Arg(a, 1));
                 default:
-                    Debug.LogWarning($"[Quill] Unknown function 'Qt.{name}'.");
+                    Debug.LogWarning($"[Quill] Unknown function 'Color.{name}'.");
                     return null;
             }
         }
@@ -335,7 +335,7 @@ namespace Quill
                 }
                 case "arg":
                 {
-                    // Qt's "%1 of %2".arg(a): replace the lowest-numbered %N marker.
+                    // "%1 of %2".arg(a): replace the lowest-numbered %N marker.
                     int lowest = int.MaxValue;
                     for (int i = 0; i + 1 < s.Length; i++)
                         if (s[i] == '%' && char.IsDigit(s[i + 1])) lowest = Math.Min(lowest, s[i + 1] - '0');

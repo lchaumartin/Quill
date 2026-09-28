@@ -34,9 +34,9 @@ Item {
             radius: 10
             x: 1 + control.position * (track.width - width - 2)
             anchors.verticalCenter: parent.verticalCenter
-            color: Qt.tint(Theme.textMuted, Qt.alpha(Theme.accent, control.position))
+            color: Color.tint(Theme.textMuted, Color.alpha(Theme.accent, control.position))
             border.width: 2
-            border.color: Qt.darker(Qt.tint(Theme.textMuted, Qt.alpha(Theme.accent, control.position)), 1.5)
+            border.color: Color.darker(Color.tint(Theme.textMuted, Color.alpha(Theme.accent, control.position)), 1.5)
         }
     }
 

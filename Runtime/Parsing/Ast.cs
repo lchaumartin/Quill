@@ -179,7 +179,7 @@ namespace Quill.Parsing
 
     /// <summary>
     /// A call. <see cref="Target"/> is null for a bare call (`foo(1)`: a function in scope or a global
-    /// such as <c>parseInt</c>), else the receiver: <c>Math</c>/<c>Qt</c>/<c>console</c>, an object
+    /// such as <c>parseInt</c>), else the receiver: <c>Math</c>/<c>Color</c>/<c>console</c>, an object
     /// (function, built-in method such as <c>anim.start()</c>, or signal emit), or a plain value
     /// (<c>value.toFixed(2)</c>, <c>name.toUpperCase()</c>).
     /// </summary>

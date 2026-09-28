@@ -30,7 +30,7 @@ Item {
         height: panel.height - 12
         color: "#00000000"
         border.width: 1
-        border.color: Qt.alpha(Theme.border, 0.55)
+        border.color: Color.alpha(Theme.border, 0.55)
     }
     Repeater {
         model: 4

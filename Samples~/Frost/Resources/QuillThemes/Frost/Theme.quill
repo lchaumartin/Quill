@@ -7,7 +7,7 @@
 // Glass shows the scene, not other Quill elements, so the page is transparent (background) and
 // every control is built from FrostPane. On URP the camera needs the Opaque Texture (the sample's
 // FrostBackdrop turns it on for the main camera).
-QtObject {
+Object {
     property string name: "Frost"
     property string tagline: "Frosted glass over your scene, for premium menus and HUDs."
 

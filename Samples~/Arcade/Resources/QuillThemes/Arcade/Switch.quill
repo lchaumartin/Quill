@@ -35,7 +35,7 @@ Item {
             height: 26
             radius: 3
             softness: 14
-            color: Qt.alpha(Theme.accent, 0.7 * control.position * Theme.glow)
+            color: Color.alpha(Theme.accent, 0.7 * control.position * Theme.glow)
         }
         Rectangle {
             x: 4 + control.position * (track.width - width - 8)
@@ -43,7 +43,7 @@ Item {
             width: 16
             height: 16
             radius: 2
-            color: Qt.tint(Theme.border, Qt.alpha(Theme.accent, control.position))
+            color: Color.tint(Theme.border, Color.alpha(Theme.accent, control.position))
         }
     }
 

@@ -8,7 +8,7 @@ namespace Quill
     /// <summary>
     /// The scope an expression evaluates against. `Self` is the object the binding (or handler, or
     /// function) belongs to; `Locals` holds handler/function locals and signal parameters. Name
-    /// resolution mirrors QML: locals, own/ancestor properties, the `parent` keyword, component-local
+    /// resolution order: locals, own/ancestor properties, the `parent` keyword, component-local
     /// ids, global ids, then property groups (`border`, `drag`, `font`).
     /// </summary>
     public sealed class EvalContext
@@ -53,7 +53,7 @@ namespace Quill
 
     /// <summary>
     /// A reference to a group of dotted properties on an object (`border` in `border.color`), so
-    /// `rect.border.color` and `drag.active` read like QML grouped properties.
+    /// `rect.border.color` and `drag.active` read as grouped properties.
     /// </summary>
     public sealed class QuillGroup
     {

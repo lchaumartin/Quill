@@ -35,7 +35,7 @@ Item {
                 height: current ? 40 : 34
                 y: current ? 0 : 6
                 radius: 2
-                color: current ? Theme.surface : tabArea.containsMouse ? Theme.controlHover : Qt.darker(Theme.control, 1.06)
+                color: current ? Theme.surface : tabArea.containsMouse ? Theme.controlHover : Color.darker(Theme.control, 1.06)
                 border.width: Theme.borderWidth
                 border.color: Theme.border
 

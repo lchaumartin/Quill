@@ -139,7 +139,7 @@ namespace Quill
 
         /// <summary>
         /// Set the theme palette: a small document whose root declares the theme's properties
-        /// (<c>QtObject { property color accent: "#3a86ff" … }</c>). Every document and component can
+        /// (<c>Object { property color accent: "#3a86ff" … }</c>). Every document and component can
         /// read them through the global <c>Theme</c> — <c>color: Theme.accent</c> — and they stay
         /// reactive, so palette properties may bind to each other. A file named <c>Theme.quill</c> passed to
         /// <see cref="RegisterComponent"/> lands here, so registering a theme folder sets both its
@@ -158,7 +158,7 @@ namespace Quill
         public void LoadFromSource(string source)
         {
             ResetState();
-            RegisterBuiltins();   // Easing.*, Animation.Infinite, Text.*, Qt.* must resolve during wiring
+            RegisterBuiltins();   // Easing.*, Animation.Infinite, Text.*, Quill.* must resolve during wiring
 
             // The theme palette: built like any object, but outside the tree (never drawn), and
             // registered as a global so every scope — components included — resolves `Theme`.
@@ -203,13 +203,13 @@ namespace Quill
             })
                 text.Property(k).SetValue(v);
 
-            var qt = MakeEnum("Qt", align);
+            var quill = MakeEnum("Quill", align);
             foreach (var (k, v) in new (string, object)[]
             {
                 ("LeftButton", 1.0), ("RightButton", 2.0), ("MiddleButton", 4.0),
                 ("Horizontal", 1.0), ("Vertical", 2.0),
             })
-                qt.Property(k).SetValue(v);
+                quill.Property(k).SetValue(v);
 
             MakeEnum("Drag", ("XAxis", 1.0), ("YAxis", 2.0), ("XAndYAxis", 3.0));
             MakeEnum("Font", ("MixedCase", 0.0), ("AllUppercase", 1.0), ("AllLowercase", 2.0),
@@ -302,7 +302,7 @@ namespace Quill
             => Update(dtSeconds, px, py, pointerDown, 0, 0);
 
         /// <summary>
-        /// As <see cref="Update(double,double,double,bool)"/>, plus wheel input in QML angle-delta units
+        /// As <see cref="Update(double,double,double,bool)"/>, plus wheel input in angle-delta units
         /// (120 per notch; positive y = away from the user).
         /// </summary>
         public void Update(double dtSeconds, double px, double py, bool pointerDown, double wheelX, double wheelY)

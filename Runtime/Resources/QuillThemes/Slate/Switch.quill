@@ -26,9 +26,9 @@ Item {
         height: 24
         radius: 12
         anchors.verticalCenter: parent.verticalCenter
-        color: Qt.tint(Theme.control, Qt.alpha(Theme.accent, control.position))
+        color: Color.tint(Theme.control, Color.alpha(Theme.accent, control.position))
         border.width: Theme.borderWidth * (1 - control.position)
-        border.color: area.containsMouse ? Qt.lighter(Theme.border, 1.6) : Theme.border
+        border.color: area.containsMouse ? Color.lighter(Theme.border, 1.6) : Theme.border
 
         Rectangle {
             width: 18

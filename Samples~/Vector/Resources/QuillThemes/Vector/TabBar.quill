@@ -24,7 +24,7 @@ Row {
             Rectangle {
                 width: parent.width
                 height: parent.height
-                color: index == control.currentIndex ? Qt.alpha(Theme.accent, 0.1) : tabArea.containsMouse ? Theme.controlHover : Qt.alpha(Theme.controlHover, 0)
+                color: index == control.currentIndex ? Color.alpha(Theme.accent, 0.1) : tabArea.containsMouse ? Theme.controlHover : Color.alpha(Theme.controlHover, 0)
             }
             Brackets {
                 length: 7

@@ -3,7 +3,7 @@
 //
 // Pop — comic-book: thick ink outlines, hard offset shadows, loud colours and Bangers headlines.
 // Buttons press down onto their shadow. Made for party, puzzle and comic-style games.
-QtObject {
+Object {
     property string name: "Pop"
     property string tagline: "Thick ink and hard shadows, for party, puzzle and comic-style games."
 

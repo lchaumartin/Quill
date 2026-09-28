@@ -26,7 +26,7 @@ Item {
     function pick(h, s, v, a) {
         control.lastHue = h
         control.lastSat = s
-        control.color = Qt.hsva(h, s, v, a)
+        control.color = Color.hsva(h, s, v, a)
         control.moved(control.color)
     }
 

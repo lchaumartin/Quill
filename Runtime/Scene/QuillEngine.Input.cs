@@ -141,7 +141,7 @@ namespace Quill
             var m = new QuillObject { TypeName = "MouseEvent" };
             m.Property("x").SetValue(px - a.AbsX());
             m.Property("y").SetValue(py - a.AbsY());
-            m.Property("button").SetValue(1.0);    // Qt.LeftButton
+            m.Property("button").SetValue(1.0);    // Quill.LeftButton
             m.Property("buttons").SetValue(1.0);
             m.Property("accepted").SetValue(true);
             m.Property("wasHeld").SetValue(a.HoldFired);

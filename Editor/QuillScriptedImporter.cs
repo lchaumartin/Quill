@@ -8,8 +8,8 @@ using UnityEngine;
 namespace Quill.Editor
 {
     /// <summary>
-    /// Imports `.quill` files (and legacy `.ui` ones — rename them, `.ui` is Qt Designer's extension
-    /// and code editors may open it as XML) as <see cref="TextAsset"/>s so they can be referenced from the inspector
+    /// Imports `.quill` files (and legacy `.ui` ones — rename them, `.ui` is a common XML UI-form
+    /// extension and code editors may open it as XML) as <see cref="TextAsset"/>s so they can be referenced from the inspector
     /// and loaded at runtime via <c>Resources.Load</c>/asset references. As a convenience it also
     /// parses the file on import and surfaces any syntax error in the console.
     /// </summary>

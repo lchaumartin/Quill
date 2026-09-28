@@ -6,7 +6,7 @@ using System;
 namespace Quill
 {
     /// <summary>
-    /// The QML easing curves: <c>Linear</c> plus <c>In</c>, <c>Out</c>, <c>InOut</c> and <c>OutIn</c>
+    /// The easing curves: <c>Linear</c> plus <c>In</c>, <c>Out</c>, <c>InOut</c> and <c>OutIn</c>
     /// variants of <c>Quad, Cubic, Quart, Quint, Sine, Expo, Circ, Back, Elastic, Bounce</c>.
     /// <c>easing.amplitude</c> / <c>easing.period</c> shape Elastic (and Bounce's amplitude),
     /// <c>easing.overshoot</c> shapes Back.

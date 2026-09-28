@@ -21,7 +21,7 @@ Item {
         height: 8 * Theme.pixel
         anchors.verticalCenter: parent.verticalCenter
         sunken: true
-        color: control.checked ? Qt.darker(Theme.accent, 1.6) : Theme.control
+        color: control.checked ? Color.darker(Theme.accent, 1.6) : Theme.control
 
         PixelBlock {
             x: control.checked ? track.width - width - Theme.pixel : Theme.pixel

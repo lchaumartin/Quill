@@ -34,7 +34,7 @@ Rectangle {
                 height: 32
                 radius: Math.max(0, Theme.radius - 3)
                 color: index == control.currentIndex ? Theme.accent
-                     : tabArea.containsMouse ? Theme.controlHover : Qt.alpha(Theme.controlHover, 0)
+                     : tabArea.containsMouse ? Theme.controlHover : Color.alpha(Theme.controlHover, 0)
                 Behavior on color { ColorAnimation { duration: Theme.duration } }
 
                 Text {

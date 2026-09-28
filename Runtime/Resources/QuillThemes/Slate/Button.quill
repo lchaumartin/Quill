@@ -20,10 +20,10 @@ Rectangle {
     radius: Theme.radius
     opacity: control.enabled ? 1 : 0.4
     color: control.highlighted
-        ? (control.down ? Qt.darker(Theme.accent, 1.2) : control.hovered ? Qt.lighter(Theme.accent, 1.12) : Theme.accent)
+        ? (control.down ? Color.darker(Theme.accent, 1.2) : control.hovered ? Color.lighter(Theme.accent, 1.12) : Theme.accent)
         : (control.down ? Theme.control : control.hovered ? Theme.controlHover : Theme.control)
     border.width: control.highlighted ? 0 : Theme.borderWidth
-    border.color: control.hovered ? Qt.lighter(Theme.border, 1.5) : Theme.border
+    border.color: control.hovered ? Color.lighter(Theme.border, 1.5) : Theme.border
     Behavior on color { ColorAnimation { duration: Theme.duration } }
 
     Text {

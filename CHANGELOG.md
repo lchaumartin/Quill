@@ -39,7 +39,7 @@ All notable changes to **Quill** are documented here. This project adheres to
 - `Rectangle.softness` — feathered edges for soft shadows and glows.
 - `Text`: `font.family` (a font under `Resources`, or installed font names), `font.letterSpacing`,
   `font.capitalization` (`Font.AllUppercase`…). Text renders one mesh per font.
-- `QtObject`, a plain non-visual object.
+- `Object`, a plain non-visual object (a bag of declared properties).
 - **Animation, QML-style**: `ColorAnimation`, `SpringAnimation`, `SmoothedAnimation`,
   `PauseAnimation`, `SequentialAnimation`, `ParallelAnimation`, `ScriptAction`, `PropertyAction`;
   `start/stop/restart/pause/resume/complete()` with `started/stopped/finished` signals; `properties`,
@@ -54,8 +54,8 @@ All notable changes to **Quill** are documented here. This project adheres to
   `++ --`), `function` declarations, calls with arguments, lists (`[a, b]`, `list[i]`, `.length`),
   hex/exponent literals, `===`, `&&`/`||` returning operands, bit flags, grouped-property reads
   (`rect.border.color`), number/string/list methods (`toFixed`, `split`, `arg`, `join`…), globals
-  (`parseInt`, `String`, `qsTr`…), `console.log`, enums (`Text.*`, `Drag.*`, `Qt.*`).
-- **Colours**: `Qt.rgba/hsva/hsla/lighter/darker/tint/alpha/colorEqual`, channels (`c.r`, `c.hsvHue`,
+  (`parseInt`, `String`, `qsTr`…), `console.log`, enums (`Text.*`, `Drag.*`, `Quill.*`).
+- **Colours**: `Color.rgba/hsva/hsla/lighter/darker/tint/alpha/colorEqual`, channels (`c.r`, `c.hsvHue`,
   `c.hslLightness`…); colours print as `#rrggbb[aa]`.
 - **Components**: `property alias`, signal parameters (also to C# via `Connect(id, signal, args => …)`),
   `Component.onCompleted`, `on<Property>Changed` handlers, components extending components;
@@ -73,6 +73,9 @@ All notable changes to **Quill** are documented here. This project adheres to
   `Quill/ColorField` shader behind it.
 
 ### Changed
+- **No Qt names in the API.** `QtObject` is now `Object`; the `Qt.*` colour helpers are `Color.*`
+  (`Color.rgba`, `Color.lighter`, `Color.alpha`…); the `Qt.*` alignment, mouse-button and orientation
+  enums are `Quill.*`. Quill's debt to Qt Quick / QML is now credited in the README and `LICENSE.md`.
 - **Documents are `.quill` files** (was `.ui`, which is Qt Designer's XML extension, so editors
   misdetected it). The importer still accepts `.ui` for now; rename yours.
 - Relicensed under the **MIT License** (previously proprietary / all rights reserved).

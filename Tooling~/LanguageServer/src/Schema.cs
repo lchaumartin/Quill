@@ -81,7 +81,8 @@ namespace Quill.LanguageServer
         public static readonly Dictionary<string, string> Globals = new Dictionary<string, string>
         {
             { "Theme", "The current theme's palette (Theme.quill): `Theme.accent`, `Theme.radius`… Live: assign to restyle." },
-            { "Qt", "Colour helpers (`Qt.rgba`, `Qt.lighter`…) and alignment / mouse-button enums." },
+            { "Color", "Colour helpers: `Color.rgba`, `Color.lighter`, `Color.alpha`…" },
+            { "Quill", "Alignment, mouse-button and orientation enums: `Quill.AlignLeft`, `Quill.LeftButton`, `Quill.Horizontal`…" },
             { "Math", "JavaScript-style maths: `Math.min`, `Math.clamp`, `Math.PI`…" },
             { "Easing", "Easing curves for animations: `Easing.OutCubic`, `Easing.InOutQuad`…" },
             { "Text", "Text enums: alignment (`Text.AlignHCenter`), wrapping (`Text.WordWrap`), eliding (`Text.ElideRight`)." },
@@ -121,21 +122,23 @@ namespace Quill.LanguageServer
                 { "ElideMiddle", "elide: …in the middle" }, { "ElideRight", "elide: at the end…" },
             };
             Enums["Text"] = text;
-            var qt = new Dictionary<string, string>(align)
+            Enums["Quill"] = new Dictionary<string, string>(align)
             {
                 { "LeftButton", "Mouse button" }, { "RightButton", "Mouse button" }, { "MiddleButton", "Mouse button" },
                 { "Horizontal", "Orientation" }, { "Vertical", "Orientation" },
-                { "rgba", "`Qt.rgba(r, g, b, a)` — a colour from 0..1 channels" },
-                { "hsva", "`Qt.hsva(h, s, v, a)` — a colour from hue/saturation/value (0..1)" },
-                { "hsla", "`Qt.hsla(h, s, l, a)` — a colour from hue/saturation/lightness (0..1)" },
-                { "color", "`Qt.color(\"#rrggbb\")` — parse a colour" },
-                { "lighter", "`Qt.lighter(color, factor = 1.5)`" },
-                { "darker", "`Qt.darker(color, factor = 2.0)`" },
-                { "tint", "`Qt.tint(base, tintColor)` — tint composited over base by its alpha" },
-                { "alpha", "`Qt.alpha(color, a)` — the colour with alpha a" },
-                { "colorEqual", "`Qt.colorEqual(a, b)`" },
             };
-            Enums["Qt"] = qt;
+            Enums["Color"] = new Dictionary<string, string>
+            {
+                { "rgba", "`Color.rgba(r, g, b, a)` — a colour from 0..1 channels" },
+                { "hsva", "`Color.hsva(h, s, v, a)` — a colour from hue/saturation/value (0..1)" },
+                { "hsla", "`Color.hsla(h, s, l, a)` — a colour from hue/saturation/lightness (0..1)" },
+                { "color", "`Color.color(\"#rrggbb\")` — parse a colour" },
+                { "lighter", "`Color.lighter(color, factor = 1.5)`" },
+                { "darker", "`Color.darker(color, factor = 2.0)`" },
+                { "tint", "`Color.tint(base, tintColor)` — tint composited over base by its alpha" },
+                { "alpha", "`Color.alpha(color, a)` — the colour with alpha a" },
+                { "colorEqual", "`Color.colorEqual(a, b)`" },
+            };
             Enums["Font"] = new Dictionary<string, string>
             {
                 { "MixedCase", "font.capitalization: as written" }, { "AllUppercase", "font.capitalization: CAPITALS" },
@@ -190,7 +193,7 @@ namespace Quill.LanguageServer
                 .P("verticalCenter", "anchor line", "This item's vertical centre, as an anchor target.", true);
             Add(item);
 
-            Add(new ElementInfo { Name = "QtObject", Doc = "A plain non-visual object: a bag of declared properties (a theme's palette is one)." });
+            Add(new ElementInfo { Name = "Object", Doc = "A plain non-visual object: a bag of declared properties (a theme's palette is one)." });
 
             Add(new ElementInfo { Name = "Rectangle", Doc = "A filled box with optional rounded corners, border and soft edge. Drawn in Quill's single SDF pass." }
                 .From(item)

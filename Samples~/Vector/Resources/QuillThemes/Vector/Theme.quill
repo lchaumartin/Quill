@@ -3,7 +3,7 @@
 //
 // Vector — a tactical HUD: hairlines, corner brackets, monospace capitals and instant response.
 // Made for sci-fi interfaces, strategy and simulation overlays.
-QtObject {
+Object {
     property string name: "Vector"
     property string tagline: "Hairlines and brackets, for sci-fi HUDs, strategy and simulation."
 

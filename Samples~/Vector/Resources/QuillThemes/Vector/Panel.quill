@@ -19,7 +19,7 @@ Rectangle {
         y: 10
         width: 14
         height: 4
-        color: Qt.alpha(Theme.accent, 0.5)
+        color: Color.alpha(Theme.accent, 0.5)
     }
     Rectangle {
         x: panel.width - 16
