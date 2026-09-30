@@ -85,8 +85,14 @@ namespace Quill
             return b;
         }
 
-        public void Render(List<QuillText> texts, float w, float h)
+        /// <param name="w">Surface width in Quill pixels.</param>
+        /// <param name="h">Surface height in Quill pixels.</param>
+        /// <param name="scale">Screen pixels per Quill pixel. Glyphs are rasterised at
+        /// <c>fontSize * scale</c> so text stays sharp; layout and metrics stay in Quill pixels.</param>
+        public void Render(List<QuillText> texts, float w, float h, float scale)
         {
+            if (scale <= 0f) scale = 1f;
+            float inv = 1f / scale;
             if (_shader == null) return;
 
             foreach (var b in _batches.Values)
@@ -106,15 +112,17 @@ namespace Quill
                 _items.Add((t, font));
                 string s = TextOf(t);
                 if (string.IsNullOrEmpty(s)) continue;
-                int size = Mathf.Max(1, Mathf.RoundToInt(t.Num("fontSize", 16f)));
-                font.RequestCharactersInTexture(s + "…", size, StyleOf(t));
+                int px = Mathf.Max(1, Mathf.RoundToInt(t.Num("fontSize", 16f) * scale));
+                font.RequestCharactersInTexture(s + "…", px, StyleOf(t));
             }
 
             for (int i = 0; i < _items.Count; i++)
             {
                 var (t, font) = _items[i];
                 string s = TextOf(t);
-                int size = Mathf.Max(1, Mathf.RoundToInt(t.Num("fontSize", 16f)));
+                // `px` is the rasterised size in screen pixels; `size` is the same in Quill pixels.
+                int px = Mathf.Max(1, Mathf.RoundToInt(t.Num("fontSize", 16f) * scale));
+                float size = px * inv;
                 var style = StyleOf(t);
                 float spacing = t.Num("font.letterSpacing", 0f);
 
@@ -125,7 +133,7 @@ namespace Quill
                 float boxW = t.Num("width"), boxH = t.Num("height");
                 float maxW = t.HasExplicitWidth ? boxW : float.PositiveInfinity;
                 var layout = TextLayout.Layout(s, maxW, (int)t.Num("wrapMode"), (int)t.Num("elide"),
-                    ch => (font.GetCharacterInfo(ch, out var info, size, style) ? info.advance : 0f) + spacing);
+                    ch => (font.GetCharacterInfo(ch, out var info, px, style) ? info.advance * inv : 0f) + spacing);
 
                 float lineH = size * Mathf.Max(0.1f, t.Num("lineHeight", 1f));
                 float contentH = lineH * layout.Lines.Count;
@@ -164,13 +172,14 @@ namespace Quill
                     string ls = line.Text;
                     for (int ci = 0; ci < ls.Length; ci++)
                     {
-                        if (!font.GetCharacterInfo(ls[ci], out var info, size, style))
+                        if (!font.GetCharacterInfo(ls[ci], out var info, px, style))
                             continue;
 
-                        float left = penX + info.minX;
-                        float right = penX + info.maxX;
-                        float top = baseline - info.maxY;     // maxY is up from baseline
-                        float bottom = baseline - info.minY;
+                        // Glyph metrics are in screen pixels; convert to Quill pixels.
+                        float left = penX + info.minX * inv;
+                        float right = penX + info.maxX * inv;
+                        float top = baseline - info.maxY * inv;     // maxY is up from baseline
+                        float bottom = baseline - info.minY * inv;
 
                         var verts = batch.Verts;
                         int b = verts.Count;
@@ -189,7 +198,7 @@ namespace Quill
                         batch.Tris.Add(b); batch.Tris.Add(b + 1); batch.Tris.Add(b + 2);
                         batch.Tris.Add(b); batch.Tris.Add(b + 2); batch.Tris.Add(b + 3);
 
-                        penX += info.advance + spacing;
+                        penX += info.advance * inv + spacing;
                     }
                 }
             }

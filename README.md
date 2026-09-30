@@ -2,6 +2,8 @@
 
 *Free and open source under the [MIT License](LICENSE.md). Scope and roadmap: [`SCOPE.md`](SCOPE.md).*
 
+**[▶ Try the live demo](https://leochaumartin.com/QuillDemo)** — Quill running in your browser, no install needed.
+
 Quill brings a clean declarative authoring model to Unity — heavily inspired by Qt Quick and its QML
 language (see [Inspiration](#inspiration-qt-and-qml)) — with real `.quill` text documents, a
 **reactive property + binding** engine, **anchors-based layout**, reusable **components**, and a
@@ -256,10 +258,10 @@ Flow {
 
 `count` is the number of instances; `itemAt(i)` returns one. Lists are values: build a new list
 (`concat`, `slice`) rather than mutating one in place. The rectangle layer uploads all rects into a
-single `StructuredBuffer` and composites them in **one draw call**, so thousands of `Repeater` cells
+single float data texture and composites them in **one draw call**, so thousands of `Repeater` cells
 stay a single pass.
 
-> Requires shader model 4.5 (StructuredBuffer in the fragment stage) — fine on desktop D3D11/Vulkan/Metal.
+> Needs shader target 3.5 (integer texel fetches) — runs on desktop, mobile GLES3/Vulkan/Metal and WebGL 2.
 
 ## Talking to C# — values & events
 
@@ -303,6 +305,25 @@ your scene loader), and a **Values** list maps `id` + `property` → `UnityEvent
 (e.g. `masterVol`/`value` → an AudioMixer). It finds the engine automatically and re-wires on reload,
 so designers can connect game logic without touching C#.
 
+## Scaling & resolution
+
+Documents are written in **Quill pixels**; `QuillSurface` maps them to screen pixels, like uGUI's
+CanvasScaler. By default (**Scale With Screen Size**, reference **1280 × 720**, **Expand**) the UI keeps
+the same size relative to the screen at any resolution or pixel density, so a Retina browser canvas or a
+4K monitor doesn't shrink it. `parent.width` / `parent.height` of the root are the surface size in Quill
+pixels, so layouts that anchor to the window keep working.
+
+| Setting                | Meaning                                                                            |
+|------------------------|------------------------------------------------------------------------------------|
+| `ScalingMode`          | `ScaleWithScreenSize` (default) or `ConstantPixelSize` (fixed `ScaleFactor`)       |
+| `ReferenceResolution`  | the resolution your documents are designed for                                     |
+| `Match`                | `Expand` (the reference area always fits), `Shrink` (it always covers), or `MatchWidthOrHeight` |
+| `MatchWidthOrHeight`   | with `MatchWidthOrHeight`: 0 follows the width, 1 the height, blended in between    |
+
+`surface.Scale` is the current screen pixels per Quill pixel. Rectangles and text are rasterised at full
+screen resolution, so they stay sharp at any scale. `ShaderEffect` uniforms (`_Rect`, `_ScreenSize`, and
+lengths such as `cornerRadius` or `radius`) are in Quill pixels, so effects scale with the UI around them.
+
 ## Showing & hiding a surface (menus)
 
 Treat each `QuillSurface` as one screen/menu. Toggle it with `Visible` (or `Show()`/`Hide()`/`Toggle()`):
@@ -339,7 +360,7 @@ The engine always supplies `_Rect` (x,y,w,h px), `_ScreenSize` and `_Opacity`. F
 Unity's built-in `_Time` (`_Time.y` is seconds since the level loaded).
 Forwarding rules: `real`→`float`, `bool`→`float`, `color`→`color`. Write your shader against the
 Quill convention (clip-space vertex with the `_ProjectionParams.x` Y-flip, `uv` 0..1 top-left) — see
-`Shaders/QuillEffectBlur.shader` as a copy-paste template. Effects render on the overlay layer (above
+`Shaders/Resources/QuillEffectBlur.shader` as a copy-paste template. Effects render on the overlay layer (above
 rectangles, below text), so a `Rectangle` placed behind an effect is covered by it regardless of tree
 order — tint inside the shader instead. Overlapping effects draw in tree order.
 
@@ -410,6 +431,7 @@ backdrop, and on URP turns on the camera's Opaque Texture for you).
 
 > In a build, add custom effect shaders to **Project Settings ▸ Graphics ▸ Always Included Shaders**
 > (or keep them under `Resources`) so `Shader.Find` can locate them; in the editor it just works.
+> Quill's own shaders live in `Shaders/Resources/`, so they always ship.
 > `ShaderEffectSource` (rendering a sub-tree to a texture) isn't implemented yet.
 
 
@@ -666,7 +688,7 @@ of that name in scope. Loops are capped at 100 000 iterations and recursion at 6
               │             (jobs, easing, behaviors, states & transitions, timers) + input
               ├─ QuillDocument / QuillThemes   the scene component; themes (Resources/QuillThemes)
               └─ Render/   QuillSurface orchestrates the layers:
-                              QuillRectLayer   → full-screen SDF, StructuredBuffer   queue 4000
+                              QuillRectLayer   → full-screen SDF, float data texture queue 4000
                               QuillImageLayer  → one textured quad per Image         queue 4001
                               QuillShaderEffectLayer → one quad per ShaderEffect     queue 4002–4097
                               QuillTextLayer   → one glyph mesh per font (TextLayout) queue 4100
@@ -680,7 +702,7 @@ of that name in scope. Loops are capped at 100 000 iterations and recursion at 6
 - **No clipping yet** (`clip: true`), so no scroll views; no keyboard focus or text input.
 - **Text** uses Unity dynamic fonts (`font.family`); no rich text or kerning yet.
 - **Images** load from `Resources` by path string (`source: "icons/logo"` → `Resources/icons/logo`).
-- The SDF pass uploads rects via a `StructuredBuffer` (safety ceiling 131072), one draw call.
+- The SDF pass uploads rects via a float data texture (safety ceiling 131072), one draw call.
 
 ## Extending it
 

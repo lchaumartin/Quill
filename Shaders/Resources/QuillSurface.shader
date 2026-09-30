@@ -4,7 +4,7 @@
 // Quill/Surface
 // Renders the entire UI in a single full-screen pass. Each Rectangle is composited as a rounded-box
 // signed-distance field, back-to-front, with analytic anti-aliasing. No per-element draw calls, no
-// Canvas/uGUI — the whole element tree is uploaded as uniform arrays and resolved per pixel.
+// Canvas/uGUI — the whole element tree is uploaded as a float data texture and resolved per pixel.
 Shader "Quill/Surface"
 {
     Properties { }
@@ -22,9 +22,11 @@ Shader "Quill/Surface"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // target 4.5 for StructuredBuffer access in the fragment stage. This lets a single pass
-            // composite thousands of rectangles (great for Repeater stress tests).
-            #pragma target 4.5
+            // target 3.5 for integer texel fetches (Texture2D.Load / GLSL texelFetch). The rect list
+            // lives in a float texture rather than a StructuredBuffer so this pass also runs on
+            // WebGL 2 and on GLES3 GPUs that expose no storage buffers to the fragment stage, while
+            // still compositing thousands of rectangles in one draw.
+            #pragma target 3.5
 
             #include "UnityCG.cginc"
 
@@ -36,7 +38,23 @@ Shader "Quill/Surface"
                 float4 borderColor; // rgba straight-alpha border
             };
 
-            StructuredBuffer<QuillRect> _Rects;
+            // Four RGBA32F texels per rect, 256 rects per 1024-texel row (see QuillRectLayer).
+            Texture2D<float4> _RectData;
+            #define RECTS_PER_ROW_SHIFT 8
+            #define RECTS_PER_ROW_MASK  255
+
+            QuillRect LoadRect(int idx)
+            {
+                int x = (idx & RECTS_PER_ROW_MASK) * 4;
+                int y = idx >> RECTS_PER_ROW_SHIFT;
+                QuillRect r;
+                r.bounds      = _RectData.Load(int3(x,     y, 0));
+                r.color       = _RectData.Load(int3(x + 1, y, 0));
+                r.prm         = _RectData.Load(int3(x + 2, y, 0));
+                r.borderColor = _RectData.Load(int3(x + 3, y, 0));
+                return r;
+            }
+
             int    _RectCount;
             float4 _ScreenSize; // xy = pixel size, zw = 1/size
 
@@ -76,7 +94,7 @@ Shader "Quill/Surface"
                 [loop]
                 for (int idx = 0; idx < count; idx++)
                 {
-                    QuillRect rect = _Rects[idx];
+                    QuillRect rect = LoadRect(idx);
 
                     float4 b = rect.bounds;
                     float2 size = b.zw;

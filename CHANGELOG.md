@@ -73,6 +73,12 @@ All notable changes to **Quill** are documented here. This project adheres to
   `Quill/ColorField` shader behind it.
 
 ### Changed
+- **The UI scales with the screen.** `QuillSurface` gains CanvasScaler-style scaling: documents are laid
+  out in Quill pixels and mapped to the screen by `ScalingMode` (`ScaleWithScreenSize` by default, with a
+  1280 × 720 reference and `Expand`, or `ConstantPixelSize`). Before, one Quill pixel was always one
+  screen pixel, so the UI shrank on high-resolution and Retina screens (e.g. a WebGL canvas at 2×).
+  Rectangles and text rasterise at full screen resolution. For the old behaviour, set
+  `ScalingMode` to `ConstantPixelSize` with a `ScaleFactor` of 1.
 - **No Qt names in the API.** `QtObject` is now `Object`; the `Qt.*` colour helpers are `Color.*`
   (`Color.rgba`, `Color.lighter`, `Color.alpha`…); the `Qt.*` alignment, mouse-button and orientation
   enums are `Quill.*`. Quill's debt to Qt Quick / QML is now credited in the README and `LICENSE.md`.
@@ -109,6 +115,12 @@ All notable changes to **Quill** are documented here. This project adheres to
   `UnityPerMaterial` cbuffer. Before, URP's SRP Batcher dropped per-material values, so with several
   effects on screen every pane drew with one pane's `_Rect`, radius and tint.
 - The README `ShaderEffect` example used `#AARRGGBB`, which Unity parses as `#RRGGBBAA`. Now `#RRGGBBAA`.
+- **UI now renders in WebGL builds.** The rectangle pass read a `StructuredBuffer` (shader model 4.5),
+  which WebGL and many GLES3 mobile GPUs don't have, so no UI was drawn there. Rects are now packed into
+  a float data texture read with `texelFetch` (target 3.5). Still one draw call, same 131072 ceiling.
+- Quill's shaders moved from `Shaders/` to `Shaders/Resources/` so they are always included in player
+  builds. Before, `Shader.Find` returned null for them in a build unless they had been added to
+  **Always Included Shaders** by hand.
 
 ### Removed
 - The Demos (`QuillDemo`, `Gallery.ui`, `GameMenu.ui`, `Playground.ui`), Liquid Glass and

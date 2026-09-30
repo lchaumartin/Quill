@@ -30,9 +30,72 @@ namespace Quill
 
         public QuillEngine Engine;
 
-        [Tooltip("When true, the root item's width/height are driven by the surface pixel size each "
-               + "frame, so `parent.width` / `parent.height` track the window.")]
+        [Tooltip("When true, the root item's width/height are driven by the surface size (in Quill pixels) "
+               + "each frame, so `parent.width` / `parent.height` track the window.")]
         public bool RootFillsSurface = true;
+
+        /// <summary>How Quill pixels (the units documents are written in) map to screen pixels.</summary>
+        public enum Scaling
+        {
+            /// <summary>One Quill pixel is <see cref="ScaleFactor"/> screen pixels, whatever the resolution.</summary>
+            ConstantPixelSize,
+            /// <summary>The UI is sized against <see cref="ReferenceResolution"/> and scales with the screen.</summary>
+            ScaleWithScreenSize,
+        }
+
+        /// <summary>How <see cref="Scaling.ScaleWithScreenSize"/> fits the reference resolution to the screen.</summary>
+        public enum ScreenMatch
+        {
+            /// <summary>Blend between matching the width (0) and the height (1), see <see cref="MatchWidthOrHeight"/>.</summary>
+            MatchWidthOrHeight,
+            /// <summary>The whole reference area always fits: the surface is never smaller than it.</summary>
+            Expand,
+            /// <summary>The reference area always covers the screen: the surface is never larger than it.</summary>
+            Shrink,
+        }
+
+        [Header("Scaling")]
+        [Tooltip("ScaleWithScreenSize keeps the UI the same size relative to the screen at any resolution or "
+               + "pixel density (e.g. a Retina browser canvas). ConstantPixelSize uses a fixed factor.")]
+        public Scaling ScalingMode = Scaling.ScaleWithScreenSize;
+
+        [Tooltip("ConstantPixelSize: screen pixels per Quill pixel.")]
+        [Min(0.01f)] public float ScaleFactor = 1f;
+
+        [Tooltip("ScaleWithScreenSize: the resolution the documents are designed for.")]
+        public Vector2 ReferenceResolution = new Vector2(1280f, 720f);
+
+        [Tooltip("ScaleWithScreenSize: how the reference resolution is fitted to the screen.")]
+        public ScreenMatch Match = ScreenMatch.Expand;
+
+        [Tooltip("MatchWidthOrHeight: 0 scales with the screen width, 1 with the height, in between blends.")]
+        [Range(0f, 1f)] public float MatchWidthOrHeight = 0.5f;
+
+        /// <summary>Screen pixels per Quill pixel, as used for the last frame.</summary>
+        public float Scale { get; private set; } = 1f;
+
+        /// <summary>The surface size in Quill pixels (what the root item fills).</summary>
+        public Vector2 Size => new Vector2(Mathf.Max(1, Screen.width) / Scale, Mathf.Max(1, Screen.height) / Scale);
+
+        /// <summary>Screen pixels per Quill pixel for a screen of <paramref name="screenW"/> × <paramref name="screenH"/>.</summary>
+        public float ComputeScale(float screenW, float screenH)
+        {
+            if (ScalingMode == Scaling.ConstantPixelSize) return Mathf.Max(0.01f, ScaleFactor);
+
+            float rw = Mathf.Max(1f, ReferenceResolution.x), rh = Mathf.Max(1f, ReferenceResolution.y);
+            float sx = screenW / rw, sy = screenH / rh;
+            float scale;
+            switch (Match)
+            {
+                case ScreenMatch.Expand: scale = Mathf.Min(sx, sy); break;
+                case ScreenMatch.Shrink: scale = Mathf.Max(sx, sy); break;
+                default:
+                    // Blend in log space, like CanvasScaler: halfway between 2x and 0.5x is 1x.
+                    scale = Mathf.Pow(2f, Mathf.Lerp(Mathf.Log(sx, 2f), Mathf.Log(sy, 2f), MatchWidthOrHeight));
+                    break;
+            }
+            return Mathf.Max(0.01f, scale);
+        }
 
         private QuillRectLayer _rects;
         private QuillImageLayer _images;
@@ -88,8 +151,12 @@ namespace Quill
         {
             if (!_visible || Engine == null || Engine.Root == null) return;
 
-            float w = Mathf.Max(1, Screen.width);
-            float h = Mathf.Max(1, Screen.height);
+            // Screen pixels, and the same area in Quill pixels (the units documents are written in).
+            float sw = Mathf.Max(1, Screen.width);
+            float sh = Mathf.Max(1, Screen.height);
+            Scale = ComputeScale(sw, sh);
+            float w = sw / Scale;
+            float h = sh / Scale;
 
             if (RootFillsSurface)
             {
@@ -99,7 +166,7 @@ namespace Quill
 
             // Read the pointer in surface pixels (top-left origin) and tick the engine.
             ReadPointer(out float px, out float py, out bool down, out float wheelX, out float wheelY);
-            Engine.Update(Time.deltaTime, px, py, down, wheelX, wheelY);
+            Engine.Update(Time.deltaTime, px / Scale, py / Scale, down, wheelX, wheelY);
 
             Engine.CollectVisuals(_visuals);
             _rectList.Clear(); _imageList.Clear(); _effectList.Clear(); _textList.Clear();
@@ -114,16 +181,19 @@ namespace Quill
                 }
             }
 
-            _rects.Render(_rectList, w, h);
+            // Layers take the surface size in Quill pixels; rects and text also get the scale so they
+            // rasterise at full screen resolution (crisp edges and glyphs at any scale).
+            _rects.Render(_rectList, w, h, Scale);
             _images.Render(_imageList, w, h);
             _effects.Render(_effectList, w, h);
-            _text.Render(_textList, w, h);
+            _text.Render(_textList, w, h, Scale);
         }
 
         /// <summary>Wheel units per notch handed to Quill (angle-delta convention: 120 per notch).</summary>
         private const float WheelNotch = 120f;
 
-        // Reads the mouse from whichever input backend is enabled. Y is flipped to top-left origin.
+        // Reads the mouse in screen pixels from whichever input backend is enabled. Y is flipped to
+        // top-left origin. The caller converts to Quill pixels.
         // The wheel is reported in angle-delta units (120 per notch, +y = away from the user).
         private static void ReadPointer(out float px, out float py, out bool down, out float wheelX, out float wheelY)
         {

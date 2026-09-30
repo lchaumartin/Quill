@@ -64,7 +64,7 @@ of scope. It is the reference for the asset's feature surface.
   New and legacy input backends.
 
 **Rendering**
-- Rectangles composited in one full-screen SDF pass via a `StructuredBuffer` (scales to thousands).
+- Rectangles composited in one full-screen SDF pass via a float data texture (scales to thousands).
 - Text as one combined glyph mesh per font (`font.family`: Resources fonts or installed fonts,
   letter spacing, capitalization); images and shader effects as clip-space quads.
 - Soft edges on rectangles (`softness`) for shadows and glows.
@@ -115,6 +115,6 @@ of scope. It is the reference for the asset's feature surface.
 
 ## Platform
 
-Unity 6000.3, URP 17. The rectangle pass needs shader model 4.5 (`StructuredBuffer` in the fragment
-stage) — fine on desktop D3D11 / Vulkan / Metal. Works with either the new Input System or the legacy
+Unity 6000.3, URP 17. The rectangle pass needs shader target 3.5 (integer texel fetches) — desktop,
+mobile and WebGL 2. Works with either the new Input System or the legacy
 Input Manager.
