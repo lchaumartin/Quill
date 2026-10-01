@@ -30,16 +30,16 @@ namespace Quill
                 {
                     var p = obj.FindProperty(member);
                     if (p != null) return p.Get();
-                    if (obj.HasGroup(member)) return new QuillGroup(obj, member);
+                    if (obj.HasGroup(member)) return obj.Group(member);
                     return null;
                 }
 
                 case QuillGroup g:
                 {
-                    string full = g.Prefix + "." + member;
+                    string full = g.FullName(member);
                     var p = g.Owner.FindProperty(full);
                     if (p != null) return p.Get();
-                    if (g.Owner.HasGroup(full)) return new QuillGroup(g.Owner, full);
+                    if (g.Owner.HasGroup(full)) return g.Owner.Group(full);
                     return null;
                 }
 
@@ -58,6 +58,15 @@ namespace Quill
                 default:
                     return null;
             }
+        }
+
+        /// <summary><c>QuillConvert.ToDouble(GetMember(target, member))</c>, reading a property without boxing.</summary>
+        public static double GetMemberNumber(object target, string member)
+        {
+            QuillProperty p = null;
+            if (target is QuillObject obj) p = obj.FindProperty(member);
+            else if (target is QuillGroup g) p = g.Owner.FindProperty(g.FullName(member));
+            return p != null ? p.GetNumber() : QuillConvert.ToDouble(GetMember(target, member));
         }
 
         public static object GetIndex(object target, object index)

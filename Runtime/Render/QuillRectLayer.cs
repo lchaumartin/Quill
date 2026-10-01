@@ -9,9 +9,12 @@ using UnityEngine;
 namespace Quill
 {
     /// <summary>
-    /// The full-screen SDF layer. All rectangles are packed into a float data texture (four RGBA32F
-    /// texels per rect) and resolved per pixel by <c>Quill/Surface</c> in one draw. There is no
-    /// per-element geometry and no small fixed cap, so it scales to thousands of rects.
+    /// The rectangle layer. All rectangles are packed into a float data texture (four RGBA32F texels
+    /// per rect) and drawn by <c>Quill/Surface</c> in one draw call: a static mesh of one quad per
+    /// rect, which the vertex shader places from the texture. Each pixel is shaded only by the rects
+    /// that cover it (like any sprite batch), so GPU cost follows the area drawn, not rects × screen
+    /// pixels. Per frame only the data texture is uploaded; the mesh changes only when the rect count
+    /// does. No small fixed cap, so it scales to thousands of rects.
     ///
     /// A texture is used instead of a ComputeBuffer / StructuredBuffer because WebGL has no compute
     /// buffers at all, and many GLES3 mobile GPUs expose zero storage buffers to the fragment stage.
@@ -41,8 +44,14 @@ namespace Quill
         private Texture2D _data;
         private int _capacity;
 
+        // One quad per rect: uv = (corner x, corner y, rect index, 0). Built for _capacity rects;
+        // only the first `_drawn` quads are indexed.
+        private Mesh _mesh;
+        private int _meshCapacity = -1;
+        private int _drawn = -1;
+        private int[] _indices;
+
         private static readonly int IdRects = Shader.PropertyToID("_RectData");
-        private static readonly int IdCount = Shader.PropertyToID("_RectCount");
         private static readonly int IdScreen = Shader.PropertyToID("_ScreenSize");
 
         public QuillRectLayer(Transform parent, int renderQueue)
@@ -63,10 +72,13 @@ namespace Quill
             _material.renderQueue = renderQueue;
 
             QuillSurface.MakeLayer(parent, "Quill Rects", out var filter, out var renderer);
-            filter.sharedMesh = BuildFullscreenQuad();
+            _mesh = new Mesh { name = "Quill Rect Quads", hideFlags = HideFlags.HideAndDontSave };
+            _mesh.MarkDynamic();
+            filter.sharedMesh = _mesh;
             renderer.sharedMaterial = _material;
 
             EnsureCapacity(RectsPerRow * 4);
+            SetDrawnCount(0);
         }
 
         /// <param name="w">Surface width in Quill pixels.</param>
@@ -102,8 +114,8 @@ namespace Quill
                 _data.Apply(false, false);
             }
 
+            SetDrawnCount(count);
             _material.SetTexture(IdRects, _data);
-            _material.SetInteger(IdCount, count);
             float sw = w * scale, sh = h * scale;
             _material.SetVector(IdScreen, new Vector4(sw, sh, 1f / sw, 1f / sh));
         }
@@ -129,22 +141,41 @@ namespace Quill
             _capacity = rows * RectsPerRow;
         }
 
-        private static Mesh BuildFullscreenQuad()
+        /// <summary>Index the first <paramref name="count"/> quads (rebuilding the quad mesh if the capacity grew).</summary>
+        private void SetDrawnCount(int count)
         {
-            var mesh = new Mesh { name = "Quill Fullscreen Quad" };
-            mesh.vertices = new[]
+            if (_mesh == null) return;
+            if (_meshCapacity != _capacity) BuildQuads(_capacity);
+            if (count == _drawn) return;
+            _drawn = count;
+            _mesh.SetIndices(_indices, 0, count * 6, MeshTopology.Triangles, 0, false);
+        }
+
+        private void BuildQuads(int quads)
+        {
+            var verts = new Vector3[quads * 4];   // unused by the shader; zero
+            var uvs = new Vector4[quads * 4];
+            _indices = new int[quads * 6];
+            for (int q = 0; q < quads; q++)
             {
-                new Vector3(-1f, -1f, 0f), new Vector3(1f, -1f, 0f),
-                new Vector3(-1f, 1f, 0f), new Vector3(1f, 1f, 0f),
-            };
-            mesh.uv = new[]
-            {
-                new Vector2(0f, 0f), new Vector2(1f, 0f),
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-            };
-            mesh.triangles = new[] { 0, 2, 1, 2, 3, 1 };
-            mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e5f);
-            return mesh;
+                int v = q * 4, t = q * 6;
+                uvs[v]     = new Vector4(0f, 0f, q, 0f);
+                uvs[v + 1] = new Vector4(1f, 0f, q, 0f);
+                uvs[v + 2] = new Vector4(0f, 1f, q, 0f);
+                uvs[v + 3] = new Vector4(1f, 1f, q, 0f);
+                _indices[t] = v; _indices[t + 1] = v + 2; _indices[t + 2] = v + 1;
+                _indices[t + 3] = v + 2; _indices[t + 4] = v + 3; _indices[t + 5] = v + 1;
+            }
+
+            _mesh.Clear();
+            _mesh.indexFormat = quads * 4 > 65535 ? UnityEngine.Rendering.IndexFormat.UInt32
+                                                  : UnityEngine.Rendering.IndexFormat.UInt16;
+            _mesh.vertices = verts;
+            _mesh.SetUVs(0, uvs);
+            // Placement happens in the shader, so the CPU bounds must cover everything.
+            _mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e5f);
+            _meshCapacity = quads;
+            _drawn = -1;
         }
 
         public void Dispose()
@@ -152,6 +183,8 @@ namespace Quill
             if (_data != null) Object.Destroy(_data);
             _data = null;
             if (_material != null) Object.Destroy(_material);
+            if (_mesh != null) Object.Destroy(_mesh);
+            _mesh = null;
         }
     }
 }

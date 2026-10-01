@@ -110,12 +110,27 @@ namespace Quill.Parsing
     public abstract class ExprNode
     {
         public abstract object Eval(EvalContext ctx);
+
+        /// <summary>
+        /// The value as a number, without boxing when the node is numeric (see <see cref="IsNumeric"/>).
+        /// Same result as <c>QuillConvert.ToDouble(Eval(ctx))</c>.
+        /// </summary>
+        public virtual double EvalNumber(EvalContext ctx) => QuillConvert.ToDouble(Eval(ctx));
+
+        /// <summary>
+        /// True when this node always yields a number (literals, arithmetic, Math.*), so it can be
+        /// evaluated through <see cref="EvalNumber"/> with no intermediate boxed values.
+        /// </summary>
+        public virtual bool IsNumeric => false;
     }
 
     public sealed class NumberNode : ExprNode
     {
         public double Value;
-        public override object Eval(EvalContext ctx) => Value;
+        private object _boxed;   // boxed once, on first use (Value is set by the parser before that)
+        public override object Eval(EvalContext ctx) => _boxed ??= Value;
+        public override double EvalNumber(EvalContext ctx) => Value;
+        public override bool IsNumeric => true;
     }
 
     public sealed class StringNode : ExprNode
@@ -127,7 +142,7 @@ namespace Quill.Parsing
     public sealed class BoolNode : ExprNode
     {
         public bool Value;
-        public override object Eval(EvalContext ctx) => Value;
+        public override object Eval(EvalContext ctx) => QuillConvert.Box(Value);
     }
 
     /// <summary>`null` / `undefined`.</summary>
@@ -141,6 +156,7 @@ namespace Quill.Parsing
     {
         public string Name;
         public override object Eval(EvalContext ctx) => ctx.Resolve(Name);
+        public override double EvalNumber(EvalContext ctx) => ctx.ResolveNumber(Name);
     }
 
     /// <summary>
@@ -153,6 +169,7 @@ namespace Quill.Parsing
         public string Member;
 
         public override object Eval(EvalContext ctx) => Builtins.GetMember(Target.Eval(ctx), Member);
+        public override double EvalNumber(EvalContext ctx) => Builtins.GetMemberNumber(Target.Eval(ctx), Member);
     }
 
     /// <summary>`target[index]` on a list or a string.</summary>
@@ -189,7 +206,52 @@ namespace Quill.Parsing
         public string Name;
         public List<ExprNode> Args = new List<ExprNode>();
 
-        public override object Eval(EvalContext ctx) => Builtins.Call(this, ctx);
+        public override object Eval(EvalContext ctx)
+        {
+            // Allocation-free fast paths for Math.* and Color.rgba/hsva/hsla (the hot calls in
+            // animated bindings); everything else goes through Builtins.Call.
+            if (IsMath && NotShadowed(ctx, "Math") && MathBuiltins.TryCall(Name, this, ctx, out double m)) return m;
+            if (IsColor && NotShadowed(ctx, "Color") && TryColor(ctx, out var c)) return c;
+            return Builtins.Call(this, ctx);
+        }
+
+        public override double EvalNumber(EvalContext ctx)
+        {
+            if (IsMath && NotShadowed(ctx, "Math") && MathBuiltins.TryCall(Name, this, ctx, out double m)) return m;
+            return QuillConvert.ToDouble(Eval(ctx));
+        }
+
+        public override bool IsNumeric => IsMath && MathBuiltins.IsNumeric(Name);
+
+        private bool IsMath => Target is IdentifierNode id && id.Name == "Math";
+        private bool IsColor => Target is IdentifierNode id && id.Name == "Color";
+
+        private static bool NotShadowed(EvalContext ctx, string name)
+            => ctx.Locals == null || !ctx.Locals.ContainsKey(name);
+
+        /// <summary>Argument <paramref name="i"/> as a number, or <paramref name="fallback"/> if absent.</summary>
+        internal double ArgNumber(EvalContext ctx, int i, double fallback = 0)
+            => i < Args.Count ? Args[i].EvalNumber(ctx) : fallback;
+
+        private bool TryColor(EvalContext ctx, out UnityEngine.Color c)
+        {
+            switch (Name)
+            {
+                case "rgba":
+                    c = new UnityEngine.Color((float)ArgNumber(ctx, 0), (float)ArgNumber(ctx, 1),
+                                              (float)ArgNumber(ctx, 2), (float)ArgNumber(ctx, 3, 1));
+                    return true;
+                case "hsva":
+                    c = QuillColor.FromHsv(ArgNumber(ctx, 0), ArgNumber(ctx, 1), ArgNumber(ctx, 2), ArgNumber(ctx, 3, 1));
+                    return true;
+                case "hsla":
+                    c = QuillColor.FromHsl(ArgNumber(ctx, 0), ArgNumber(ctx, 1), ArgNumber(ctx, 2), ArgNumber(ctx, 3, 1));
+                    return true;
+                default:
+                    c = default;
+                    return false;
+            }
+        }
     }
 
     /// <summary>`cond ? a : b`.</summary>
@@ -200,6 +262,9 @@ namespace Quill.Parsing
         public ExprNode WhenFalse;
         public override object Eval(EvalContext ctx)
             => QuillConvert.ToBool(Cond.Eval(ctx)) ? WhenTrue.Eval(ctx) : WhenFalse.Eval(ctx);
+        public override double EvalNumber(EvalContext ctx)
+            => QuillConvert.ToBool(Cond.Eval(ctx)) ? WhenTrue.EvalNumber(ctx) : WhenFalse.EvalNumber(ctx);
+        public override bool IsNumeric => WhenTrue.IsNumeric && WhenFalse.IsNumeric;
     }
 
     public sealed class UnaryNode : ExprNode
@@ -208,15 +273,26 @@ namespace Quill.Parsing
         public ExprNode Operand;
         public override object Eval(EvalContext ctx)
         {
-            var v = Operand.Eval(ctx);
             switch (Op)
             {
-                case TokenType.Not: return !QuillConvert.ToBool(v);
-                case TokenType.Minus: return -QuillConvert.ToDouble(v);
-                case TokenType.Plus: return QuillConvert.ToDouble(v);
-                default: return v;
+                case TokenType.Not: return QuillConvert.Box(!QuillConvert.ToBool(Operand.Eval(ctx)));
+                case TokenType.Minus: return -Operand.EvalNumber(ctx);
+                case TokenType.Plus: return Operand.EvalNumber(ctx);
+                default: return Operand.Eval(ctx);
             }
         }
+
+        public override double EvalNumber(EvalContext ctx)
+        {
+            switch (Op)
+            {
+                case TokenType.Minus: return -Operand.EvalNumber(ctx);
+                case TokenType.Plus: return Operand.EvalNumber(ctx);
+                default: return QuillConvert.ToDouble(Eval(ctx));
+            }
+        }
+
+        public override bool IsNumeric => Op == TokenType.Minus || Op == TokenType.Plus;
     }
 
     public sealed class BinaryNode : ExprNode
@@ -238,7 +314,101 @@ namespace Quill.Parsing
                 var l = Left.Eval(ctx);
                 return QuillConvert.ToBool(l) ? l : Right.Eval(ctx);
             }
+
+            // Numbers in, number out: compute unboxed, box the result once.
+            if (IsNumeric) return Arith(Op, Left.EvalNumber(ctx), Right.EvalNumber(ctx));
+
+            if (Op == TokenType.Plus)
+            {
+                // A numeric side can't be a string, so only the other side decides concatenation.
+                if (Left.IsNumeric)
+                {
+                    double a = Left.EvalNumber(ctx);
+                    var r = Right.Eval(ctx);
+                    return r is string rs ? QuillConvert.FormatNumber(a) + rs : (object)(a + QuillConvert.ToDouble(r));
+                }
+                if (Right.IsNumeric)
+                {
+                    var l = Left.Eval(ctx);
+                    double b = Right.EvalNumber(ctx);
+                    return l is string ls ? ls + QuillConvert.FormatNumber(b) : (object)(QuillConvert.ToDouble(l) + b);
+                }
+            }
+            else if (IsComparison(Op) && Left.IsNumeric && Right.IsNumeric)
+            {
+                return QuillConvert.Box(Compare(Op, Left.EvalNumber(ctx), Right.EvalNumber(ctx)));
+            }
             return Apply(Op, Left.Eval(ctx), Right.Eval(ctx));
+        }
+
+        public override double EvalNumber(EvalContext ctx)
+        {
+            if (IsNumeric) return Arith(Op, Left.EvalNumber(ctx), Right.EvalNumber(ctx));
+            if (Op == TokenType.Plus)
+            {
+                // `index + 1` with an untyped side: add without boxing the sum (it may still turn out to
+                // be a string concatenation, which is then converted like before).
+                bool ln = Left.IsNumeric, rn = Right.IsNumeric;
+                object l = null, r = null;
+                double a = 0, b = 0;
+                if (ln) a = Left.EvalNumber(ctx); else l = Left.Eval(ctx);
+                if (rn) b = Right.EvalNumber(ctx); else r = Right.Eval(ctx);
+                if ((!ln && l is string) || (!rn && r is string))
+                    return QuillConvert.ToDouble((ln ? QuillConvert.FormatNumber(a) : QuillConvert.ToStr(l))
+                                               + (rn ? QuillConvert.FormatNumber(b) : QuillConvert.ToStr(r)));
+                return (ln ? a : QuillConvert.ToDouble(l)) + (rn ? b : QuillConvert.ToDouble(r));
+            }
+            return QuillConvert.ToDouble(Eval(ctx));
+        }
+
+        /// <summary>
+        /// Arithmetic on numeric operands. `+` only counts when both sides are numeric (otherwise it
+        /// may concatenate strings).
+        /// </summary>
+        public override bool IsNumeric
+        {
+            get
+            {
+                switch (Op)
+                {
+                    case TokenType.Minus: case TokenType.Star: case TokenType.Slash: case TokenType.Percent:
+                    case TokenType.BitAnd: case TokenType.BitOr:
+                        return true;
+                    case TokenType.Plus:
+                        return Left.IsNumeric && Right.IsNumeric;
+                    default:
+                        return false;
+                }
+            }
+        }
+
+        private static double Arith(TokenType op, double a, double b)
+        {
+            switch (op)
+            {
+                case TokenType.Plus: return a + b;
+                case TokenType.Minus: return a - b;
+                case TokenType.Star: return a * b;
+                case TokenType.Slash: return b == 0 ? 0 : a / b;
+                case TokenType.Percent: return b == 0 ? 0 : a % b;
+                case TokenType.BitAnd: return (long)a & (long)b;
+                case TokenType.BitOr: return (long)a | (long)b;
+                default: return 0;
+            }
+        }
+
+        private static bool IsComparison(TokenType op)
+            => op == TokenType.Less || op == TokenType.Greater || op == TokenType.LessEqual || op == TokenType.GreaterEqual;
+
+        private static bool Compare(TokenType op, double a, double b)
+        {
+            switch (op)
+            {
+                case TokenType.Less: return a < b;
+                case TokenType.Greater: return a > b;
+                case TokenType.LessEqual: return a <= b;
+                default: return a >= b;
+            }
         }
 
         /// <summary>Apply a binary operator to two evaluated operands (also used by `+=` etc.).</summary>
@@ -251,7 +421,7 @@ namespace Quill.Parsing
             if (op == TokenType.EqualEqual || op == TokenType.NotEqual)
             {
                 bool eq = Builtins.LooseEquals(l, r);
-                return op == TokenType.EqualEqual ? eq : !eq;
+                return QuillConvert.Box(op == TokenType.EqualEqual ? eq : !eq);
             }
 
             double a = QuillConvert.ToDouble(l);
@@ -263,10 +433,10 @@ namespace Quill.Parsing
                 case TokenType.Star: return a * b;
                 case TokenType.Slash: return b == 0 ? 0 : a / b;
                 case TokenType.Percent: return b == 0 ? 0 : a % b;
-                case TokenType.Less: return a < b;
-                case TokenType.Greater: return a > b;
-                case TokenType.LessEqual: return a <= b;
-                case TokenType.GreaterEqual: return a >= b;
+                case TokenType.Less: return QuillConvert.Box(a < b);
+                case TokenType.Greater: return QuillConvert.Box(a > b);
+                case TokenType.LessEqual: return QuillConvert.Box(a <= b);
+                case TokenType.GreaterEqual: return QuillConvert.Box(a >= b);
                 case TokenType.BitAnd: return (double)((long)a & (long)b);
                 case TokenType.BitOr: return (double)((long)a | (long)b);
                 default: return null;

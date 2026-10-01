@@ -1,6 +1,8 @@
 // Quill for Unity — a declarative, reactive UI framework.
 // Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
 //
+using System.Collections.Generic;
+
 namespace Quill
 {
     /// <summary>
@@ -40,18 +42,18 @@ namespace Quill
             var pLeft = parent?.Property("left");
             var pTop = parent?.Property("top");
 
-            left.SetBinding(new Binding(engine,
-                () => (pLeft != null ? QuillConvert.ToDouble(pLeft.Get()) : 0.0) + QuillConvert.ToDouble(x.Get())));
-            top.SetBinding(new Binding(engine,
-                () => (pTop != null ? QuillConvert.ToDouble(pTop.Get()) : 0.0) + QuillConvert.ToDouble(y.Get())));
-            right.SetBinding(new Binding(engine,
-                () => QuillConvert.ToDouble(left.Get()) + QuillConvert.ToDouble(w.Get())));
-            bottom.SetBinding(new Binding(engine,
-                () => QuillConvert.ToDouble(top.Get()) + QuillConvert.ToDouble(h.Get())));
-            hCenter.SetBinding(new Binding(engine,
-                () => QuillConvert.ToDouble(left.Get()) + QuillConvert.ToDouble(w.Get()) * 0.5));
-            vCenter.SetBinding(new Binding(engine,
-                () => QuillConvert.ToDouble(top.Get()) + QuillConvert.ToDouble(h.Get()) * 0.5));
+            left.SetBinding(Binding.Numeric(engine,
+                () => (pLeft != null ? pLeft.GetNumber() : 0.0) + x.GetNumber()));
+            top.SetBinding(Binding.Numeric(engine,
+                () => (pTop != null ? pTop.GetNumber() : 0.0) + y.GetNumber()));
+            right.SetBinding(Binding.Numeric(engine,
+                () => left.GetNumber() + w.GetNumber()));
+            bottom.SetBinding(Binding.Numeric(engine,
+                () => top.GetNumber() + h.GetNumber()));
+            hCenter.SetBinding(Binding.Numeric(engine,
+                () => left.GetNumber() + w.GetNumber() * 0.5));
+            vCenter.SetBinding(Binding.Numeric(engine,
+                () => top.GetNumber() + h.GetNumber() * 0.5));
         }
 
         // ---- Resolve x/y/width/height from the declared anchors --------------------------------
@@ -82,14 +84,14 @@ namespace Quill
 
             if (c.Has("fill"))
             {
-                px.SetBinding(new Binding(engine, () => c.Line(c.Obj("fill"), "left") + c.LM() - c.PLeft()));
-                pw.SetBinding(new Binding(engine, () =>
+                px.SetBinding(Binding.Numeric(engine, () => c.Line(c.Obj("fill"), "left") + c.LM() - c.PLeft()));
+                pw.SetBinding(Binding.Numeric(engine, () =>
                     c.Line(c.Obj("fill"), "right") - c.Line(c.Obj("fill"), "left") - c.LM() - c.RM()));
                 return;
             }
             if (c.Has("centerIn"))
             {
-                px.SetBinding(new Binding(engine, () =>
+                px.SetBinding(Binding.Numeric(engine, () =>
                     c.Line(c.Obj("centerIn"), "horizontalCenter") + c.HCO() - c.W() * 0.5 - c.PLeft()));
                 return;
             }
@@ -97,20 +99,20 @@ namespace Quill
             bool L = c.Has("left"), R = c.Has("right"), HC = c.Has("horizontalCenter");
             if (L && R)
             {
-                px.SetBinding(new Binding(engine, () => c.Val("left") + c.LM() - c.PLeft()));
-                pw.SetBinding(new Binding(engine, () => (c.Val("right") - c.RM()) - (c.Val("left") + c.LM())));
+                px.SetBinding(Binding.Numeric(engine, () => c.Val("left") + c.LM() - c.PLeft()));
+                pw.SetBinding(Binding.Numeric(engine, () => (c.Val("right") - c.RM()) - (c.Val("left") + c.LM())));
             }
             else if (L)
             {
-                px.SetBinding(new Binding(engine, () => c.Val("left") + c.LM() - c.PLeft()));
+                px.SetBinding(Binding.Numeric(engine, () => c.Val("left") + c.LM() - c.PLeft()));
             }
             else if (R)
             {
-                px.SetBinding(new Binding(engine, () => c.Val("right") - c.RM() - c.W() - c.PLeft()));
+                px.SetBinding(Binding.Numeric(engine, () => c.Val("right") - c.RM() - c.W() - c.PLeft()));
             }
             else if (HC)
             {
-                px.SetBinding(new Binding(engine, () => c.Val("horizontalCenter") + c.HCO() - c.W() * 0.5 - c.PLeft()));
+                px.SetBinding(Binding.Numeric(engine, () => c.Val("horizontalCenter") + c.HCO() - c.W() * 0.5 - c.PLeft()));
             }
         }
 
@@ -122,14 +124,14 @@ namespace Quill
 
             if (c.Has("fill"))
             {
-                py.SetBinding(new Binding(engine, () => c.Line(c.Obj("fill"), "top") + c.TM() - c.PTop()));
-                ph.SetBinding(new Binding(engine, () =>
+                py.SetBinding(Binding.Numeric(engine, () => c.Line(c.Obj("fill"), "top") + c.TM() - c.PTop()));
+                ph.SetBinding(Binding.Numeric(engine, () =>
                     c.Line(c.Obj("fill"), "bottom") - c.Line(c.Obj("fill"), "top") - c.TM() - c.BM()));
                 return;
             }
             if (c.Has("centerIn"))
             {
-                py.SetBinding(new Binding(engine, () =>
+                py.SetBinding(Binding.Numeric(engine, () =>
                     c.Line(c.Obj("centerIn"), "verticalCenter") + c.VCO() - c.H() * 0.5 - c.PTop()));
                 return;
             }
@@ -137,20 +139,20 @@ namespace Quill
             bool T = c.Has("top"), B = c.Has("bottom"), VC = c.Has("verticalCenter");
             if (T && B)
             {
-                py.SetBinding(new Binding(engine, () => c.Val("top") + c.TM() - c.PTop()));
-                ph.SetBinding(new Binding(engine, () => (c.Val("bottom") - c.BM()) - (c.Val("top") + c.TM())));
+                py.SetBinding(Binding.Numeric(engine, () => c.Val("top") + c.TM() - c.PTop()));
+                ph.SetBinding(Binding.Numeric(engine, () => (c.Val("bottom") - c.BM()) - (c.Val("top") + c.TM())));
             }
             else if (T)
             {
-                py.SetBinding(new Binding(engine, () => c.Val("top") + c.TM() - c.PTop()));
+                py.SetBinding(Binding.Numeric(engine, () => c.Val("top") + c.TM() - c.PTop()));
             }
             else if (B)
             {
-                py.SetBinding(new Binding(engine, () => c.Val("bottom") - c.BM() - c.H() - c.PTop()));
+                py.SetBinding(Binding.Numeric(engine, () => c.Val("bottom") - c.BM() - c.H() - c.PTop()));
             }
             else if (VC)
             {
-                py.SetBinding(new Binding(engine, () => c.Val("verticalCenter") + c.VCO() - c.H() * 0.5 - c.PTop()));
+                py.SetBinding(Binding.Numeric(engine, () => c.Val("verticalCenter") + c.VCO() - c.H() * 0.5 - c.PTop()));
             }
         }
 
@@ -165,15 +167,23 @@ namespace Quill
 
             public Ctx(QuillItem it) { It = it; _parent = it.Parent as QuillItem; }
 
-            public bool Has(string n) => It.HasProperty("anchors." + n);
-            public double Val(string n) => QuillConvert.ToDouble(It.Property("anchors." + n).Get());
-            public QuillItem Obj(string n) => Has(n) ? It.Property("anchors." + n).Get() as QuillItem : null;
-            public double Line(QuillItem t, string line) => t == null ? 0.0 : QuillConvert.ToDouble(t.Property(line).Get());
+            public bool Has(string n) => It.HasProperty(Full(n));
+            public double Val(string n) => It.Property(Full(n)).GetNumber();
+            public QuillItem Obj(string n) => Has(n) ? It.Property(Full(n)).Get() as QuillItem : null;
+            public double Line(QuillItem t, string line) => t == null ? 0.0 : t.Property(line).GetNumber();
 
-            public double W() => QuillConvert.ToDouble(It.Property("width").Get());
-            public double H() => QuillConvert.ToDouble(It.Property("height").Get());
-            public double PLeft() => _parent == null ? 0.0 : QuillConvert.ToDouble(_parent.Property("left").Get());
-            public double PTop() => _parent == null ? 0.0 : QuillConvert.ToDouble(_parent.Property("top").Get());
+            public double W() => It.Property("width").GetNumber();
+            public double H() => It.Property("height").GetNumber();
+            public double PLeft() => _parent == null ? 0.0 : _parent.Property("left").GetNumber();
+            public double PTop() => _parent == null ? 0.0 : _parent.Property("top").GetNumber();
+
+            // "anchors." + n, built once per name (these run on every anchor re-evaluation).
+            private static readonly Dictionary<string, string> s_Full = new Dictionary<string, string>();
+            private static string Full(string n)
+            {
+                if (!s_Full.TryGetValue(n, out var f)) s_Full[n] = f = "anchors." + n;
+                return f;
+            }
 
             public double LM() => Margin("leftMargin");
             public double RM() => Margin("rightMargin");

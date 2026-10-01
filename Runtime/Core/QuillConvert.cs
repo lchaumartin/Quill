@@ -15,6 +15,10 @@ namespace Quill
     /// </summary>
     public static class QuillConvert
     {
+        /// <summary>Shared boxes for true/false, so boolean results don't allocate.</summary>
+        public static readonly object True = true, False = false;
+        public static object Box(bool b) => b ? True : False;
+
         public static double ToDouble(object v)
         {
             switch (v)
@@ -79,7 +83,30 @@ namespace Quill
             return Color.magenta; // visible "unset/error" sentinel
         }
 
+        // Parsed colour strings. Literal colours ("#243044", "white") are read by the renderer every
+        // frame; parsing them once keeps that free. Bounded: cleared if a document churns through
+        // thousands of distinct strings.
+        private static readonly System.Collections.Generic.Dictionary<string, (bool ok, Color color)> s_ParsedColors
+            = new System.Collections.Generic.Dictionary<string, (bool, Color)>();
+        private const int MaxParsedColors = 4096;
+
         public static bool TryParseColor(string s, out Color color)
+        {
+            if (s != null && s_ParsedColors.TryGetValue(s, out var hit))
+            {
+                color = hit.color;
+                return hit.ok;
+            }
+            bool ok = ParseColor(s, out color);
+            if (s != null)
+            {
+                if (s_ParsedColors.Count >= MaxParsedColors) s_ParsedColors.Clear();
+                s_ParsedColors[s] = (ok, color);
+            }
+            return ok;
+        }
+
+        private static bool ParseColor(string s, out Color color)
         {
             color = Color.magenta;
             if (string.IsNullOrEmpty(s)) return false;

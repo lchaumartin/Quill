@@ -2,9 +2,12 @@
 // Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
 //
 // Quill/Surface
-// Renders the entire UI in a single full-screen pass. Each Rectangle is composited as a rounded-box
-// signed-distance field, back-to-front, with analytic anti-aliasing. No per-element draw calls, no
-// Canvas/uGUI — the whole element tree is uploaded as a float data texture and resolved per pixel.
+// Draws every Rectangle in one draw call: one quad per rectangle, all in a single mesh. Each quad's
+// vertex shader reads its rectangle from a float data texture and grows the quad to the rectangle's
+// bounds (plus the anti-aliasing / softness margin); the fragment shader evaluates that one rounded
+// box's signed distance. A pixel is therefore shaded only by the rectangles that cover it, instead
+// of every pixel looping over every rectangle. Quads draw in mesh order, which the GPU blends in
+// order, so rectangles composite back-to-front exactly as the element tree lists them.
 Shader "Quill/Surface"
 {
     Properties { }
@@ -15,17 +18,17 @@ Shader "Quill/Surface"
         Cull Off
         ZWrite Off
         ZTest Always
-        Blend SrcAlpha OneMinusSrcAlpha
+        // Premultiplied blend: the fragment returns its colour already multiplied by alpha.
+        Blend One OneMinusSrcAlpha
 
         Pass
         {
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // target 3.5 for integer texel fetches (Texture2D.Load / GLSL texelFetch). The rect list
-            // lives in a float texture rather than a StructuredBuffer so this pass also runs on
-            // WebGL 2 and on GLES3 GPUs that expose no storage buffers to the fragment stage, while
-            // still compositing thousands of rectangles in one draw.
+            // target 3.5 for integer texel fetches (Texture2D.Load / GLSL texelFetch), here in the
+            // vertex stage. The rect list lives in a float texture rather than a StructuredBuffer so
+            // this pass also runs on WebGL 2 and on GLES3 GPUs without vertex-stage storage buffers.
             #pragma target 3.5
 
             #include "UnityCG.cginc"
@@ -55,20 +58,49 @@ Shader "Quill/Surface"
                 return r;
             }
 
-            int    _RectCount;
             float4 _ScreenSize; // xy = pixel size, zw = 1/size
 
-            struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
-            struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; };
+            // uv.xy = quad corner (0 or 1), uv.z = rect index. The vertex position is unused: the
+            // quad is placed entirely from the rect data.
+            struct appdata { float4 vertex : POSITION; float4 uv : TEXCOORD0; };
+
+            struct v2f
+            {
+                float4 pos         : SV_POSITION;
+                float2 px          : TEXCOORD0;   // this fragment's pixel position (top-left origin)
+                float4 shape       : TEXCOORD1;   // xy = centre px, zw = half-size px
+                float4 prm         : TEXCOORD2;   // radius (clamped), opacity, border width, softness
+                float4 color       : TEXCOORD3;
+                float4 borderColor : TEXCOORD4;
+            };
 
             v2f vert(appdata v)
             {
                 v2f o;
-                // Mesh vertices are authored directly in clip space (-1..1), so the quad always
-                // fills the screen regardless of camera/transform. _ProjectionParams.x is -1 when
+                QuillRect r = LoadRect((int)(v.uv.z + 0.5));
+
+                float2 size  = r.bounds.zw;
+                float2 half_ = size * 0.5;
+                float  soft  = max(r.prm.w, 0.0);
+
+                // Grow the quad past the shape by the width of its coverage ramp: 0.5 px of
+                // anti-aliasing, or half the softness feather plus that.
+                float  pad = 0.5 * soft + 1.0;
+                float2 corner = r.bounds.xy - pad + v.uv.xy * (size + 2.0 * pad);
+
+                // Empty or fully transparent rects collapse to a point: no fragments at all.
+                if (size.x <= 0.0 || size.y <= 0.0 || r.prm.y <= 0.0) corner = r.bounds.xy;
+
+                // Pixel (top-left origin, y-down) -> clip space. _ProjectionParams.x is -1 when
                 // rendering into a flipped target (D3D-style), which corrects the Y orientation.
-                o.pos = float4(v.vertex.x, v.vertex.y * _ProjectionParams.x, 0.0, 1.0);
-                o.uv = v.uv;
+                float2 clip = float2(corner.x * _ScreenSize.z * 2.0 - 1.0, 1.0 - corner.y * _ScreenSize.w * 2.0);
+                o.pos = float4(clip.x, clip.y * _ProjectionParams.x, 0.0, 1.0);
+
+                o.px = corner;
+                o.shape = float4(r.bounds.xy + half_, half_);
+                o.prm = float4(min(r.prm.x, min(half_.x, half_.y)), r.prm.y, max(r.prm.z, 0.0), soft);
+                o.color = r.color;
+                o.borderColor = r.borderColor;
                 return o;
             }
 
@@ -81,78 +113,37 @@ Shader "Quill/Surface"
 
             float4 frag(v2f i) : SV_Target
             {
-                // Pixel coordinate with top-left origin (UV y is bottom-up in Unity).
-                float2 px = float2(i.uv.x * _ScreenSize.x, (1.0 - i.uv.y) * _ScreenSize.y);
+                float2 half_  = i.shape.zw;
+                float  radius = i.prm.x;
+                float  border = i.prm.z;
+                float  soft   = i.prm.w;
 
-                // Accumulate straight-alpha colour using the painter's "over" operator.
-                float3 rgb = 0.0;
-                float  a   = 0.0;
+                float2 p = i.px - i.shape.xy;
+                float d = sdRoundBox(p, half_, radius);
 
-                int count = _RectCount;
-                // [loop] forces a real runtime loop instead of an unroll (which would generate a
-                // giant shader and minute-long compiles).
-                [loop]
-                for (int idx = 0; idx < count; idx++)
+                // `d` is a true signed distance in SCREEN PIXELS: rects are uploaded in screen pixels
+                // and one fragment is one pixel, so |grad d| is 1 by construction and the 1px coverage
+                // ramp needs no derivatives (fwidth would overshoot on diagonals — see history).
+                // `softness` widens that ramp into a smooth feather centred on the outline.
+                float coverage = soft > 0.0 ? 1.0 - smoothstep(-0.5 * soft - 0.5, 0.5 * soft + 0.5, d)
+                                            : saturate(0.5 - d);
+
+                // Inner shape (shrunk by the border): ~1 deep inside the fill, 0 in the border ring.
+                float innerCov = 1.0;
+                if (border > 0.0)
                 {
-                    QuillRect rect = LoadRect(idx);
-
-                    float4 b = rect.bounds;
-                    float2 size = b.zw;
-                    if (size.x <= 0.0 || size.y <= 0.0) continue;
-
-                    float2 center = b.xy + size * 0.5;
-                    float2 half_  = size * 0.5;
-                    float  radius = min(rect.prm.x, min(half_.x, half_.y));
-                    float  opacity = rect.prm.y;
-                    float  border  = max(rect.prm.z, 0.0);
-
-                    float2 p = px - center;
-                    float d = sdRoundBox(p, half_, radius);
-
-                    // `d` is a true signed distance in SCREEN PIXELS: px is built from _ScreenSize,
-                    // which QuillSurface fills with Screen.width/height, and the quad is authored in
-                    // clip space, so one fragment is exactly one pixel. |grad d| is therefore 1 by
-                    // construction and the 1px coverage ramp needs no derivative at all.
-                    //
-                    // This was fwidth(d), which was wrong twice over:
-                    //   1. fwidth is the Manhattan sum |ddx| + |ddy|, which overshoots the true
-                    //      gradient length by up to sqrt(2) on a 45-degree edge. Straight sides got
-                    //      a 1px AA band and corner arcs got up to 1.41px, so a thin border ring
-                    //      went soft and dim on the corners while the sides stayed crisp.
-                    //   2. HLSL leaves derivatives undefined after divergent control flow, and the
-                    //      per-pixel `continue` below diverges inside this loop.
-                    //
-                    // `softness` widens that ramp into a smooth feather centred on the outline, for
-                    // soft shadows and glows (0 keeps the crisp 1px edge above).
-                    float soft = rect.prm.w;
-                    float coverage = soft > 0.0 ? 1.0 - smoothstep(-0.5 * soft - 0.5, 0.5 * soft + 0.5, d)
-                                                : saturate(0.5 - d);
-                    if (coverage <= 0.0) continue;
-
-                    float4 fill = rect.color;
-                    float4 brd  = rect.borderColor;
-
-                    // Inner shape (shrunk by the border). innerCov ~ 1 deep inside the fill, 0 in
-                    // the border ring. With no border the whole shape is fill.
-                    float innerCov = 1.0;
-                    if (border > 0.0)
-                    {
-                        float2 innerHalf = max(half_ - border, 0.0);
-                        float  innerRad  = max(radius - border, 0.0);
-                        float  di = sdRoundBox(p, innerHalf, innerRad);
-                        innerCov = saturate(0.5 - di);   // same 1px-per-fragment reasoning
-                    }
-
-                    float3 crgb = lerp(brd.rgb, fill.rgb, innerCov);
-                    float  ca   = lerp(brd.a,   fill.a,   innerCov);
-                    float  src  = ca * opacity * coverage;
-
-                    // over: result = src over dst
-                    rgb = crgb * src + rgb * (1.0 - src);
-                    a   = src + a * (1.0 - src);
+                    float2 innerHalf = max(half_ - border, 0.0);
+                    float  innerRad  = max(radius - border, 0.0);
+                    innerCov = saturate(0.5 - sdRoundBox(p, innerHalf, innerRad));
                 }
 
-                return float4(rgb, a);
+                float3 rgb = lerp(i.borderColor.rgb, i.color.rgb, innerCov);
+                float  a   = lerp(i.borderColor.a,   i.color.a,   innerCov) * i.prm.y * coverage;
+
+                // Premultiplied "over". Where the UI below is opaque this is exactly what the previous
+                // full-screen pass produced; where translucent UI lies directly on the scene that pass
+                // weighted the colour by alpha² (darker), which this corrects.
+                return float4(rgb * a, a);
             }
             ENDCG
         }

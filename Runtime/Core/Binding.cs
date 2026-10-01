@@ -18,9 +18,16 @@ namespace Quill
     {
         public QuillProperty Target;
 
-        private readonly Func<object> _expr;
+        private Func<object> _expr;
+        private readonly Func<double> _number;   // set for numeric bindings: evaluated without boxing
         private readonly QuillEngine _engine;
-        private readonly List<QuillProperty> _deps = new List<QuillProperty>();
+
+        // Dependencies of the last evaluation, and a spare list the next evaluation fills. Most
+        // re-evaluations read exactly the same properties, so subscriptions are only touched for the
+        // difference (a property with thousands of subscribers, like a shared clock, is never
+        // rescanned).
+        private List<QuillProperty> _deps = new List<QuillProperty>(4);
+        private List<QuillProperty> _prevDeps = new List<QuillProperty>(4);
         private bool _queued;
         private bool _detached;
 
@@ -30,66 +37,99 @@ namespace Quill
             _expr = expr;
         }
 
-        /// <summary>The expression this binding evaluates (states re-install it after a state ends).</summary>
-        public Func<object> Expression => _expr;
+        private Binding(QuillEngine engine, Func<double> number)
+        {
+            _engine = engine;
+            _number = number;
+        }
 
-        /// <summary>True once the binding was replaced; it never evaluates again.</summary>
+        /// <summary>
+        /// A binding whose expression always yields a number. It is evaluated and stored unboxed, so
+        /// re-evaluating it allocates nothing.
+        /// </summary>
+        public static Binding Numeric(QuillEngine engine, Func<double> expr) => new Binding(engine, expr);
+
+        /// <summary>The expression, as a boxed-result function (saved and restored by states).</summary>
+        public Func<object> Expression
+        {
+            get
+            {
+                if (_expr == null && _number != null)
+                {
+                    var number = _number;
+                    _expr = () => number();
+                }
+                return _expr;
+            }
+        }
+
         public bool IsDetached => _detached;
 
-        // --- Automatic dependency tracking ------------------------------------------------------
+        // ---- Dependency capture ------------------------------------------------------------------
 
         [ThreadStatic] private static Stack<Binding> _evalStack;
 
+        /// <summary>Called by <see cref="QuillProperty.Get"/>. Records a dependency on the current binding.</summary>
         internal static void RegisterRead(QuillProperty p)
         {
             var stack = _evalStack;
             if (stack == null || stack.Count == 0) return;
             var current = stack.Peek();
-            if (!current._deps.Contains(p))
-            {
-                current._deps.Add(p);
-                p.AddSubscriber(current);
-            }
+            if (current._deps.Contains(p)) return;
+            current._deps.Add(p);
+            // Subscribe right away (not after evaluation) so a change later in this same evaluation
+            // still re-queues the binding. Already subscribed if it was a dependency last time.
+            if (!current._prevDeps.Contains(p)) p.AddSubscriber(current);
         }
 
-        // --- Evaluation -------------------------------------------------------------------------
+        // ---- Evaluation --------------------------------------------------------------------------
 
+        /// <summary>Re-run the expression, re-capturing dependencies, and push the result to the target.</summary>
         public void Evaluate()
         {
             if (_detached) { _queued = false; return; }   // replaced while it sat in the dirty queue
 
-            // Detach old dependencies; they are rebuilt fresh on every evaluation so the graph
-            // always reflects the branches actually taken this time.
-            for (int i = 0; i < _deps.Count; i++)
-                _deps[i].RemoveSubscriber(this);
+            // Last evaluation's dependencies become the reference; collect this one's afresh.
+            var prev = _deps;
+            _deps = _prevDeps;
+            _prevDeps = prev;
             _deps.Clear();
 
             _evalStack ??= new Stack<Binding>();
             _evalStack.Push(this);
-            object result;
+            object result = null;
+            double number = 0;
+            bool failed = false;
             try
             {
-                result = _expr();
+                if (_number != null) number = _number();
+                else result = _expr();
             }
             catch (Exception e)
             {
                 UnityEngine.Debug.LogWarning($"[Quill] Binding for '{Target?.Name}' threw: {e.Message}");
-                result = null;
+                failed = true;
             }
             finally
             {
                 _evalStack.Pop();
             }
 
+            // Unsubscribe from what this evaluation no longer reads.
+            for (int i = 0; i < _prevDeps.Count; i++)
+                if (!_deps.Contains(_prevDeps[i])) _prevDeps[i].RemoveSubscriber(this);
+            _prevDeps.Clear();
+
             _queued = false;
-            Target?.AssignFromBinding(result);
+            var target = Target;
+            if (target == null) return;
+            if (failed) { target.AssignFromBinding(null); return; }
+            if (_number == null) { target.AssignFromBinding(result); return; }
+
+            // Numeric: stored unboxed (boxed only if a Behavior intercepts the write).
+            target.AssignNumberFromBinding(number);
         }
 
-        /// <summary>A dependency changed: schedule a recompute on the engine's dirty queue.</summary>
-        /// <summary>
-        /// Stop driving the target for good: drop every dependency so the binding never
-        /// re-evaluates. Called when the property gets a new binding or an imperative value.
-        /// </summary>
         internal void Detach()
         {
             _detached = true;
@@ -99,6 +139,7 @@ namespace Quill
             Target = null;
         }
 
+        /// <summary>Mark dirty; the engine re-evaluates queued bindings once per frame (or on demand).</summary>
         public void Invalidate()
         {
             if (_queued) return;

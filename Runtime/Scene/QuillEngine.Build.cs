@@ -307,7 +307,9 @@ namespace Quill
 
                     var ctx = new EvalContext(this, obj);
                     var ast = prop.Value;
-                    var binding = new Binding(this, () => ast.Eval(ctx));
+                    // Numeric expressions (arithmetic, Math.*) evaluate unboxed and only write on change.
+                    var binding = ast.IsNumeric ? Binding.Numeric(this, () => ast.EvalNumber(ctx))
+                                                : new Binding(this, () => ast.Eval(ctx));
                     obj.Property(prop.Name).SetBinding(binding);
                 }
             }

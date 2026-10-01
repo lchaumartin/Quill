@@ -19,6 +19,9 @@ namespace Quill
 
         private readonly List<ActiveJob> _jobs = new List<ActiveJob>();
         private readonly List<QuillTimer> _activeTimers = new List<QuillTimer>();
+        // Reused per-frame snapshots (timers and jobs can start or stop others while they run).
+        private readonly List<QuillTimer> _timerScratch = new List<QuillTimer>();
+        private readonly List<ActiveJob> _jobScratch = new List<ActiveJob>();
         private readonly Dictionary<QuillBehavior, BehaviorRunner> _behaviors = new Dictionary<QuillBehavior, BehaviorRunner>();
         private readonly Dictionary<QuillObject, StateGroup> _stateGroups = new Dictionary<QuillObject, StateGroup>();
         private readonly Dictionary<QuillPositioner, Positioners.Info> _positioners = new Dictionary<QuillPositioner, Positioners.Info>();
@@ -68,7 +71,9 @@ namespace Quill
             // Timers — at most one trigger per timer per frame.
             if (_activeTimers.Count > 0)
             {
-                foreach (var t in _activeTimers.ToArray())
+                _timerScratch.Clear();
+                _timerScratch.AddRange(_activeTimers);
+                foreach (var t in _timerScratch)
                 {
                     if (!t.Flag("running", false)) { _activeTimers.Remove(t); continue; }
                     double interval = Math.Max(1, t.Num("interval", 1000));
@@ -88,12 +93,15 @@ namespace Quill
                     }
                     t.Emit("onTriggered");
                 }
+                _timerScratch.Clear();
             }
 
             // Animation jobs.
             if (_jobs.Count > 0)
             {
-                foreach (var entry in _jobs.ToArray())
+                _jobScratch.Clear();
+                _jobScratch.AddRange(_jobs);
+                foreach (var entry in _jobScratch)
                 {
                     if (entry.Removed) continue;
                     if (entry.Owner != null && entry.Owner.Flag("paused", false)) continue;
@@ -111,6 +119,7 @@ namespace Quill
                         entry.OnDone?.Invoke();
                     }
                 }
+                _jobScratch.Clear();
                 _jobs.RemoveAll(e => e.Removed);
             }
         }

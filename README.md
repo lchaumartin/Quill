@@ -7,8 +7,8 @@
 Quill brings a clean declarative authoring model to Unity — heavily inspired by Qt Quick and its QML
 language (see [Inspiration](#inspiration-qt-and-qml)) — with real `.quill` text documents, a
 **reactive property + binding** engine, **anchors-based layout**, reusable **components**, and a
-low-level renderer (no uGUI/Canvas) built around a single full-screen SDF pass plus lightweight
-textured layers.
+low-level renderer (no uGUI/Canvas): every rectangle in one draw call as signed-distance-field quads,
+plus lightweight textured layers.
 
 ![The same Quill document in the eight themes: Slate, Frost, Arcade, Tome, Vector, Pebble, Bitmap and Pop](Documentation~/images/themes.jpg)
 
@@ -58,7 +58,7 @@ generated solution. Setup per editor: [`Tooling~/README.md`](Tooling~/README.md)
 | `Behavior`        | `Behavior on prop { Animation }`, `enabled`                                        |
 | `State` `PropertyChanges` `Transition` | see [States & transitions](#states--transitions)                |
 
-`Rectangle` is drawn in the full-screen SDF pass (rounded corners + anti-aliased border).
+`Rectangle` is drawn by the rectangle layer as an SDF quad (rounded corners + anti-aliased border).
 `Text` uses Unity's dynamic-font atlas; `Image` is a textured quad. Add new element types via
 `QuillTypeRegistry.Register(...)`.
 
@@ -258,8 +258,8 @@ Flow {
 
 `count` is the number of instances; `itemAt(i)` returns one. Lists are values: build a new list
 (`concat`, `slice`) rather than mutating one in place. The rectangle layer uploads all rects into a
-single float data texture and composites them in **one draw call**, so thousands of `Repeater` cells
-stay a single pass.
+single float data texture and draws them as one quad each in **one draw call**, so thousands of
+`Repeater` cells stay a single draw, and each pixel is only shaded by the rects that cover it.
 
 > Needs shader target 3.5 (integer texel fetches) — runs on desktop, mobile GLES3/Vulkan/Metal and WebGL 2.
 
@@ -688,7 +688,7 @@ of that name in scope. Loops are capped at 100 000 iterations and recursion at 6
               │             (jobs, easing, behaviors, states & transitions, timers) + input
               ├─ QuillDocument / QuillThemes   the scene component; themes (Resources/QuillThemes)
               └─ Render/   QuillSurface orchestrates the layers:
-                              QuillRectLayer   → full-screen SDF, float data texture queue 4000
+                              QuillRectLayer   → SDF quads, float data texture, 1 draw queue 4000
                               QuillImageLayer  → one textured quad per Image         queue 4001
                               QuillShaderEffectLayer → one quad per ShaderEffect     queue 4002–4097
                               QuillTextLayer   → one glyph mesh per font (TextLayout) queue 4100
@@ -702,7 +702,7 @@ of that name in scope. Loops are capped at 100 000 iterations and recursion at 6
 - **No clipping yet** (`clip: true`), so no scroll views; no keyboard focus or text input.
 - **Text** uses Unity dynamic fonts (`font.family`); no rich text or kerning yet.
 - **Images** load from `Resources` by path string (`source: "icons/logo"` → `Resources/icons/logo`).
-- The SDF pass uploads rects via a float data texture (safety ceiling 131072), one draw call.
+- Rectangles are uploaded via a float data texture (safety ceiling 131072) and drawn in one draw call.
 
 ## Extending it
 

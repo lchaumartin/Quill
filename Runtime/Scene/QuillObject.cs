@@ -146,6 +146,15 @@ namespace Quill
         /// <summary>True if the object has dotted properties under <paramref name="prefix"/> (e.g. "border").</summary>
         public bool HasGroup(string prefix) => _groups != null && _groups.Contains(prefix);
 
+        // Group handles (`border` in `rect.border.color`), made once per prefix.
+        private Dictionary<string, QuillGroup> _groupHandles;
+        internal QuillGroup Group(string prefix)
+        {
+            _groupHandles ??= new Dictionary<string, QuillGroup>();
+            if (!_groupHandles.TryGetValue(prefix, out var g)) _groupHandles[prefix] = g = new QuillGroup(this, prefix);
+            return g;
+        }
+
         /// <summary>Property on this object only, or null.</summary>
         public QuillProperty FindProperty(string name)
             => _props.TryGetValue(name, out var p) ? p : null;
@@ -180,7 +189,7 @@ namespace Quill
         public float Num(string name, float fallback = 0f)
         {
             var p = FindProperty(name);
-            return p != null ? QuillConvert.ToFloat(p.Raw) : fallback;
+            return p != null ? (float)p.Number : fallback;
         }
 
         public bool Flag(string name, bool fallback = true)

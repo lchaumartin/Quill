@@ -32,16 +32,28 @@ namespace Quill
 
         /// <param name="maxWidth">Available width; <= 0 or infinity means unconstrained.</param>
         /// <param name="advance">Horizontal advance of one character, in pixels.</param>
-        public static Result Layout(string text, float maxWidth, int wrapMode, int elide, Func<char, float> advance)
+        public static Result Layout(string text, float maxWidth, int wrapMode, int elide, Func<char, float> advance,
+                                    Result into = null)
         {
-            var result = new Result();
+            var result = into ?? new Result();
+            result.Lines.Clear();
+            result.Width = 0;
             text ??= string.Empty;
             bool limited = maxWidth > 0 && !float.IsInfinity(maxWidth);
 
-            foreach (var raw in text.Replace("\r\n", "\n").Split('\n'))
+            if (text.IndexOf('\n') < 0 && text.IndexOf('\r') < 0)
             {
-                if (limited && wrapMode != NoWrap) Wrapped(raw, maxWidth, wrapMode, advance, result.Lines);
-                else result.Lines.Add(new Line { Text = raw, Width = Measure(raw, advance) });
+                // One paragraph (the usual case): no splitting, so no allocations without wrapping.
+                if (limited && wrapMode != NoWrap) Wrapped(text, maxWidth, wrapMode, advance, result.Lines);
+                else result.Lines.Add(new Line { Text = text, Width = Measure(text, advance) });
+            }
+            else
+            {
+                foreach (var raw in text.Replace("\r\n", "\n").Split('\n'))
+                {
+                    if (limited && wrapMode != NoWrap) Wrapped(raw, maxWidth, wrapMode, advance, result.Lines);
+                    else result.Lines.Add(new Line { Text = raw, Width = Measure(raw, advance) });
+                }
             }
 
             if (limited && elide != ElideNone)

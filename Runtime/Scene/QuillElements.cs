@@ -66,7 +66,7 @@ namespace Quill
     /// `Rectangle` — a filled, optionally rounded box, with an optional border
     /// (`border.width`, `border.color`). `softness` feathers the edge over that many pixels, centred on
     /// the outline — a soft shadow or glow is a Rectangle with a large softness behind the real one.
-    /// Rendered in the full-screen SDF pass.
+    /// Rendered by the rectangle layer as one SDF quad (all rectangles share one draw call).
     /// </summary>
     public sealed class QuillRectangle : QuillItem
     {
@@ -95,6 +95,9 @@ namespace Quill
         // The engine's implicit-size bindings (width/height follow the content). While they drive
         // the size, the renderer doesn't wrap or align against it (that would feed back).
         internal Binding ImplicitWidth, ImplicitHeight;
+
+        // The text layer's per-element cache (displayed string + layout), reused across frames.
+        internal object RenderCache;
 
         /// <summary>True when width comes from the document (or anchors), not from the content.</summary>
         public bool HasExplicitWidth => ImplicitWidth == null || FindProperty("width")?.Driver != ImplicitWidth;

@@ -7,7 +7,26 @@ All notable changes to **Quill** are documented here. This project adheres to
 
 ## [Unreleased]
 
+### Changed
+- **Rectangle rendering is now one SDF quad per rectangle** instead of a full-screen pass in which every
+  pixel evaluated every rectangle. Still one draw call and the same float data texture (WebGL 2 / GLES3
+  safe), but GPU cost now follows the area the rectangles cover rather than rectangles × screen pixels.
+  Wherever the UI below is opaque the output is unchanged. Where translucent UI lies directly on the
+  scene, rectangles now blend with standard "over": the old pass weighted their colour by alpha², so
+  translucent colours and anti-aliased edges over soft shadows came out too dark.
+- **Far fewer per-frame allocations, and faster binding updates.** Properties store numbers unboxed;
+  arithmetic, `Math.*` and `Color.rgba/hsva/hsla` evaluate without intermediate boxes or argument
+  arrays; numeric bindings (including all anchor lines) write without boxing. A binding re-evaluation
+  only touches subscriptions that actually changed, instead of unsubscribing and resubscribing every
+  dependency (a property read by thousands of bindings was rescanned on each of them). Text keeps its
+  layout and glyph requests from frame to frame until the label changes; colour strings are parsed
+  once; animation timers and jobs reuse their per-frame lists. A static UI now allocates nothing per
+  frame; animated documents allocate only new colours and new strings. Results are unchanged.
+
 ### Added
+- Profiler markers on `QuillSurface`: `Quill.Surface`, enclosing `Quill.Tick` (input, animations, bindings),
+  `Quill.Collect`, `Quill.Render.Rects`, `Quill.Render.ImagesEffects` and `Quill.Render.Text` — visible in the
+  Unity Profiler and readable with a `ProfilerRecorder`.
 - **Editor tooling** (`Tooling~/`): a language server for `.quill` files — diagnostics as you type
   (syntax, unknown elements / properties / handlers / names / members, with suggestions),
   completion, hover docs, go to definition, outline and folding — with clients for **VS Code**

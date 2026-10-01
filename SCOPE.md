@@ -64,7 +64,8 @@ of scope. It is the reference for the asset's feature surface.
   New and legacy input backends.
 
 **Rendering**
-- Rectangles composited in one full-screen SDF pass via a float data texture (scales to thousands).
+- Rectangles drawn in one draw call as SDF quads placed from a float data texture (scales to thousands;
+  GPU cost follows the area covered).
 - Text as one combined glyph mesh per font (`font.family`: Resources fonts or installed fonts,
   letter spacing, capitalization); images and shader effects as clip-space quads.
 - Soft edges on rectangles (`softness`) for shadows and glows.

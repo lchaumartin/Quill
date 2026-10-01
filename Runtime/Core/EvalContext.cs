@@ -45,9 +45,21 @@ namespace Quill
 
             // A property group of this object or an ancestor: `drag.active`, `border.color`.
             for (var o = Self; o != null; o = o.Parent)
-                if (o.HasGroup(name)) return new QuillGroup(o, name);
+                if (o.HasGroup(name)) return o.Group(name);
 
             return null;
+        }
+
+        /// <summary><c>QuillConvert.ToDouble(Resolve(name))</c>, reading a property without boxing.</summary>
+        public double ResolveNumber(string name)
+        {
+            if (Locals != null && Locals.ContainsKey(name)) return QuillConvert.ToDouble(Resolve(name));
+            if (name != "parent")
+            {
+                var p = Self?.FindPropertyInScope(name);
+                if (p != null) return p.GetNumber();
+            }
+            return QuillConvert.ToDouble(Resolve(name));
         }
     }
 
@@ -64,6 +76,15 @@ namespace Quill
         {
             Owner = owner;
             Prefix = prefix;
+        }
+
+        // Prefix + "." + member, built once per member.
+        private Dictionary<string, string> _full;
+        public string FullName(string member)
+        {
+            _full ??= new Dictionary<string, string>();
+            if (!_full.TryGetValue(member, out var f)) _full[member] = f = Prefix + "." + member;
+            return f;
         }
 
         public override bool Equals(object obj)

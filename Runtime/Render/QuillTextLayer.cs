@@ -33,7 +33,46 @@ namespace Quill
         private readonly int _renderQueue;
         private readonly Shader _shader;
         private readonly Dictionary<Font, Batch> _batches = new Dictionary<Font, Batch>();
-        private readonly List<(QuillText text, Font font)> _items = new List<(QuillText, Font)>();
+        private readonly List<(QuillText text, Font font, TextCache cache)> _items = new List<(QuillText, Font, TextCache)>();
+        private readonly GlyphAdvance _advance = new GlyphAdvance();
+
+        /// <summary>
+        /// What a Text displayed last frame and how it was laid out. Reused frame to frame until the
+        /// text, its font settings or its box change, so a steady label costs no layout and no
+        /// allocations. Kept on the element (<see cref="QuillText.RenderCache"/>).
+        /// </summary>
+        private sealed class TextCache
+        {
+            public object Raw;            // the `text` value it was built from
+            public int Caps = -1;
+            public string Display;
+            public Font Font;
+            public int Px;
+            public FontStyle Style;
+            public float Spacing, MaxW, Inv;
+            public int Wrap, Elide;
+            public bool LayoutValid;
+            public int RequestedAt = -1;  // s_AtlasRebuilds when its glyphs were last requested
+            public readonly TextLayout.Result Layout = new TextLayout.Result();
+        }
+
+        /// <summary>The advance function handed to TextLayout: one instance and one delegate, reused.</summary>
+        private sealed class GlyphAdvance
+        {
+            public Font Font;
+            public int Px;
+            public FontStyle Style;
+            public float Inv, Spacing;
+            public readonly System.Func<char, float> Fn;
+            public GlyphAdvance() { Fn = Measure; }
+            private float Measure(char ch)
+                => (Font.GetCharacterInfo(ch, out var info, Px, Style) ? info.advance * Inv : 0f) + Spacing;
+        }
+
+        // Dynamic font atlases can be rebuilt (and lose glyphs) when new characters are requested;
+        // glyphs only need requesting again after a rebuild or when a label changes.
+        private static int s_AtlasRebuilds;
+        static QuillTextLayer() { Font.textureRebuilt += _ => s_AtlasRebuilds++; }
 
         private static readonly int IdMainTex = Shader.PropertyToID("_MainTex");
 
@@ -52,11 +91,10 @@ namespace Quill
         }
 
         // The displayed string: `text` with `font.capitalization` applied.
-        private static string TextOf(QuillText t)
+        private static string ApplyCaps(string s, int caps)
         {
-            string s = QuillConvert.ToStr(t.FindProperty("text")?.Raw);
             if (string.IsNullOrEmpty(s)) return s;
-            switch ((int)t.Num("font.capitalization", 0f))
+            switch (caps)
             {
                 case 1: case 3: return s.ToUpperInvariant();   // AllUppercase; SmallCaps approximated
                 case 2: return s.ToLowerInvariant();
@@ -100,30 +138,63 @@ namespace Quill
                 b.Verts.Clear(); b.Uvs.Clear(); b.Cols.Clear(); b.Tris.Clear();
             }
 
-            // Resolve fonts, and make sure every glyph we need is in its atlas before reading any
-            // metrics (requesting can rebuild an atlas and invalidate earlier UVs, so it all happens
-            // up front).
+            // Resolve fonts and displayed strings, and make sure every glyph we need is in its atlas
+            // before reading any metrics (requesting can rebuild an atlas and invalidate earlier UVs,
+            // so it all happens up front). Unchanged labels skip the request unless an atlas was
+            // rebuilt since; a rebuild during this pass re-runs it so no label is left without glyphs.
             _items.Clear();
             for (int i = 0; i < texts.Count; i++)
             {
                 var t = texts[i];
                 var font = QuillFonts.Get(QuillConvert.ToStr(t.FindProperty("font.family")?.Raw));
                 if (font == null) continue;
-                _items.Add((t, font));
-                string s = TextOf(t);
-                if (string.IsNullOrEmpty(s)) continue;
+                var cache = t.RenderCache as TextCache;
+                if (cache == null) t.RenderCache = cache = new TextCache();
+
+                object raw = t.FindProperty("text")?.Raw;
+                int caps = (int)t.Num("font.capitalization", 0f);
+                if (caps != cache.Caps || !Equals(raw, cache.Raw))
+                {
+                    cache.Raw = raw;
+                    cache.Caps = caps;
+                    cache.Display = ApplyCaps(QuillConvert.ToStr(raw), caps);
+                    cache.LayoutValid = false;
+                    cache.RequestedAt = -1;
+                }
                 int px = Mathf.Max(1, Mathf.RoundToInt(t.Num("fontSize", 16f) * scale));
-                font.RequestCharactersInTexture(s + "…", px, StyleOf(t));
+                var style = StyleOf(t);
+                if (font != cache.Font || px != cache.Px || style != cache.Style)
+                {
+                    cache.Font = font;
+                    cache.Px = px;
+                    cache.Style = style;
+                    cache.LayoutValid = false;
+                    cache.RequestedAt = -1;
+                }
+                _items.Add((t, font, cache));
+            }
+            for (int pass = 0; pass < 3; pass++)
+            {
+                int stamp = s_AtlasRebuilds;
+                for (int i = 0; i < _items.Count; i++)
+                {
+                    var c = _items[i].cache;
+                    if (c.RequestedAt == s_AtlasRebuilds || string.IsNullOrEmpty(c.Display)) continue;
+                    c.Font.RequestCharactersInTexture(c.Display, c.Px, c.Style);
+                    c.Font.RequestCharactersInTexture("…", c.Px, c.Style);   // for eliding
+                    c.RequestedAt = s_AtlasRebuilds;
+                }
+                if (s_AtlasRebuilds == stamp) break;
             }
 
             for (int i = 0; i < _items.Count; i++)
             {
-                var (t, font) = _items[i];
-                string s = TextOf(t);
+                var (t, font, cache) = _items[i];
+                string s = cache.Display;
                 // `px` is the rasterised size in screen pixels; `size` is the same in Quill pixels.
-                int px = Mathf.Max(1, Mathf.RoundToInt(t.Num("fontSize", 16f) * scale));
+                int px = cache.Px;
                 float size = px * inv;
-                var style = StyleOf(t);
+                var style = cache.Style;
                 float spacing = t.Num("font.letterSpacing", 0f);
 
                 Color col = QuillConvert.ToColor(t.FindProperty("color")?.Raw);
@@ -132,17 +203,27 @@ namespace Quill
 
                 float boxW = t.Num("width"), boxH = t.Num("height");
                 float maxW = t.HasExplicitWidth ? boxW : float.PositiveInfinity;
-                var layout = TextLayout.Layout(s, maxW, (int)t.Num("wrapMode"), (int)t.Num("elide"),
-                    ch => (font.GetCharacterInfo(ch, out var info, px, style) ? info.advance * inv : 0f) + spacing);
+                int wrap = (int)t.Num("wrapMode"), elide = (int)t.Num("elide");
+                if (!cache.LayoutValid || maxW != cache.MaxW || wrap != cache.Wrap || elide != cache.Elide
+                    || spacing != cache.Spacing || inv != cache.Inv)
+                {
+                    _advance.Font = font; _advance.Px = px; _advance.Style = style;
+                    _advance.Inv = inv; _advance.Spacing = spacing;
+                    TextLayout.Layout(s, maxW, wrap, elide, _advance.Fn, cache.Layout);
+                    cache.MaxW = maxW; cache.Wrap = wrap; cache.Elide = elide;
+                    cache.Spacing = spacing; cache.Inv = inv;
+                    cache.LayoutValid = true;
+                }
+                var layout = cache.Layout;
 
                 float lineH = size * Mathf.Max(0.1f, t.Num("lineHeight", 1f));
                 float contentH = lineH * layout.Lines.Count;
 
                 // Content size -> implicit width/height and anchors (1-frame latency is fine). Letter
                 // spacing goes between characters, so the last one's is not part of the extent.
-                t.Property("contentWidth").SetValue((double)Mathf.Max(0f, layout.Width - (layout.Width > 0 ? spacing : 0f)));
-                t.Property("contentHeight").SetValue((double)contentH);
-                t.Property("lineCount").SetValue((double)layout.Lines.Count);
+                t.Property("contentWidth").SetNumber(Mathf.Max(0f, layout.Width - (layout.Width > 0 ? spacing : 0f)));
+                t.Property("contentHeight").SetNumber(contentH);
+                t.Property("lineCount").SetNumber(layout.Lines.Count);
 
                 if (string.IsNullOrEmpty(s)) continue;
                 var batch = BatchFor(font);

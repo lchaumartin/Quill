@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
 //
 using System.Collections.Generic;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Quill
@@ -10,7 +11,7 @@ namespace Quill
     /// Renders a <see cref="QuillEngine"/>'s element tree. The tree is split into three layers, each
     /// drawn with its own shader and a fixed render-queue so they composite in a stable order:
     ///
-    ///   1. Rectangles  — one full-screen SDF pass (rounded boxes + borders).   queue 4000
+    ///   1. Rectangles  — one draw call of SDF quads (rounded boxes + borders). queue 4000
     ///   2. Images      — one textured quad per Image element.                   queue 4001
     ///   3. Effects     — one quad per ShaderEffect, one queue each, tree order. queue 4002–4097
     ///   4. Text        — one combined glyph mesh per font.                      queue 4100
@@ -97,6 +98,15 @@ namespace Quill
             return Mathf.Max(0.01f, scale);
         }
 
+        // Profiler markers, so Quill's per-frame cost shows up by phase in the Unity Profiler and can be
+        // read with a ProfilerRecorder (the benchmark does). Quill.Surface encloses the other five.
+        private static readonly ProfilerMarker s_SurfaceMarker = new ProfilerMarker("Quill.Surface");
+        private static readonly ProfilerMarker s_TickMarker = new ProfilerMarker("Quill.Tick");
+        private static readonly ProfilerMarker s_CollectMarker = new ProfilerMarker("Quill.Collect");
+        private static readonly ProfilerMarker s_RectsMarker = new ProfilerMarker("Quill.Render.Rects");
+        private static readonly ProfilerMarker s_LayersMarker = new ProfilerMarker("Quill.Render.ImagesEffects");
+        private static readonly ProfilerMarker s_TextMarker = new ProfilerMarker("Quill.Render.Text");
+
         private QuillRectLayer _rects;
         private QuillImageLayer _images;
         private QuillShaderEffectLayer _effects;
@@ -150,6 +160,7 @@ namespace Quill
         private void LateUpdate()
         {
             if (!_visible || Engine == null || Engine.Root == null) return;
+            using var surfaceScope = s_SurfaceMarker.Auto();
 
             // Screen pixels, and the same area in Quill pixels (the units documents are written in).
             float sw = Mathf.Max(1, Screen.width);
@@ -158,35 +169,44 @@ namespace Quill
             float w = sw / Scale;
             float h = sh / Scale;
 
-            if (RootFillsSurface)
+            using (s_TickMarker.Auto())
             {
-                Engine.Root.Property("width").SetValue((double)w);
-                Engine.Root.Property("height").SetValue((double)h);
+                if (RootFillsSurface)
+                {
+                    Engine.Root.Property("width").SetNumber(w);
+                    Engine.Root.Property("height").SetNumber(h);
+                }
+
+                // Read the pointer in surface pixels (top-left origin) and tick the engine.
+                ReadPointer(out float px, out float py, out bool down, out float wheelX, out float wheelY);
+                Engine.Update(Time.deltaTime, px / Scale, py / Scale, down, wheelX, wheelY);
             }
 
-            // Read the pointer in surface pixels (top-left origin) and tick the engine.
-            ReadPointer(out float px, out float py, out bool down, out float wheelX, out float wheelY);
-            Engine.Update(Time.deltaTime, px / Scale, py / Scale, down, wheelX, wheelY);
-
-            Engine.CollectVisuals(_visuals);
-            _rectList.Clear(); _imageList.Clear(); _effectList.Clear(); _textList.Clear();
-            for (int i = 0; i < _visuals.Count; i++)
+            using (s_CollectMarker.Auto())
             {
-                switch (_visuals[i])
+                Engine.CollectVisuals(_visuals);
+                _rectList.Clear(); _imageList.Clear(); _effectList.Clear(); _textList.Clear();
+                for (int i = 0; i < _visuals.Count; i++)
                 {
-                    case QuillShaderEffect fx: _effectList.Add(fx); break;
-                    case QuillRectangle r: _rectList.Add(r); break;
-                    case QuillImage img: _imageList.Add(img); break;
-                    case QuillText t: _textList.Add(t); break;
+                    switch (_visuals[i])
+                    {
+                        case QuillShaderEffect fx: _effectList.Add(fx); break;
+                        case QuillRectangle r: _rectList.Add(r); break;
+                        case QuillImage img: _imageList.Add(img); break;
+                        case QuillText t: _textList.Add(t); break;
+                    }
                 }
             }
 
             // Layers take the surface size in Quill pixels; rects and text also get the scale so they
             // rasterise at full screen resolution (crisp edges and glyphs at any scale).
-            _rects.Render(_rectList, w, h, Scale);
-            _images.Render(_imageList, w, h);
-            _effects.Render(_effectList, w, h);
-            _text.Render(_textList, w, h, Scale);
+            using (s_RectsMarker.Auto()) _rects.Render(_rectList, w, h, Scale);
+            using (s_LayersMarker.Auto())
+            {
+                _images.Render(_imageList, w, h);
+                _effects.Render(_effectList, w, h);
+            }
+            using (s_TextMarker.Auto()) _text.Render(_textList, w, h, Scale);
         }
 
         /// <summary>Wheel units per notch handed to Quill (angle-delta convention: 120 per notch).</summary>
