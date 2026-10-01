@@ -31,8 +31,10 @@ namespace Quill
             if (name == "parent")
                 return Self != null ? Self.Parent : null;
 
+            // `activeFocus` & co. name this item's own focus state (every item has it, lazily).
+            var p = QuillObject.IsLazyFocusProperty(name) ? Self?.FindPropertyOrLazy(name) : null;
             // Own property, then walk up the parent chain (lexical scoping).
-            var p = Self?.FindPropertyInScope(name);
+            p ??= Self?.FindPropertyInScope(name);
             if (p != null) return p.Get();
 
             // Component-local ids first (the nearest enclosing component scope), then global ids.
@@ -56,7 +58,8 @@ namespace Quill
             if (Locals != null && Locals.ContainsKey(name)) return QuillConvert.ToDouble(Resolve(name));
             if (name != "parent")
             {
-                var p = Self?.FindPropertyInScope(name);
+                var p = QuillObject.IsLazyFocusProperty(name) ? Self?.FindPropertyOrLazy(name) : null;
+                p ??= Self?.FindPropertyInScope(name);
                 if (p != null) return p.GetNumber();
             }
             return QuillConvert.ToDouble(Resolve(name));

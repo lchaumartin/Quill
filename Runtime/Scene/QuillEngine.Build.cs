@@ -24,8 +24,12 @@ namespace Quill
             _wasDown = false;
             _ptrX = _ptrY = double.NaN;
             _lastClickArea = null;
+            ActiveFocusItem = null;
             _changeSubscriptions.Clear();
             _positioners.Clear();
+            _flickables.Clear();
+            _flickDrag = null;
+            _flickChain.Clear();
             ResetAnimationState();
             Time = 0;
         }
@@ -47,10 +51,11 @@ namespace Quill
             }
 
             var obj = QuillTypeRegistry.Create(node.TypeName);
+            obj.Engine = this;
             obj.OnProperty = node.OnProperty;
             obj.AssignedTo = node.AssignedTo;
 
-            parent?.InsertChild(insertIndex, obj);
+            parent?.ChildHost(obj).InsertChild(insertIndex, obj);
             obj.Id = node.Id;
             var outer = _idScope;
             if (ownScope)
@@ -101,9 +106,10 @@ namespace Quill
             else
             {
                 root = QuillTypeRegistry.Create(compNode.TypeName);
+                root.Engine = this;
                 root.LocalIds = new Dictionary<string, QuillObject>();   // component-private id scope
                 root.OnProperty = compNode.OnProperty;
-                parent?.InsertChild(insertIndex, root);
+                parent?.ChildHost(root).InsertChild(insertIndex, root);
 
                 // The component's own root id lives in its local scope; the use-site id in the outer scope.
                 if (!string.IsNullOrEmpty(compNode.Id)) root.LocalIds[compNode.Id] = root;
@@ -196,7 +202,15 @@ namespace Quill
 
                 // Anchor-line props must exist before bindings/resolution read them. Parent-first.
                 foreach (var obj in objs)
-                    if (!(obj is QuillNonVisual)) Anchors.SetupLines(this, obj);
+                {
+                    if (obj is QuillNonVisual) continue;
+                    Anchors.SetupLines(this, obj);
+                    if (obj is QuillFlickable fl)   // its content item is the parent of what it contains
+                    {
+                        fl.ContentItem.Engine = this;
+                        Anchors.SetupLines(this, fl.ContentItem);
+                    }
+                }
 
                 WireBindings(pairs);        // attach document bindings (incl. anchors.* inputs)
 
@@ -208,6 +222,12 @@ namespace Quill
 
                 foreach (var obj in objs)   // Text takes its content size unless sized by the document
                     if (obj is QuillText text) SetupText(text);
+
+                foreach (var obj in objs)   // TextInput: implicit size, caret/selection, pointer editing
+                    if (obj is QuillTextInput input) SetupTextInput(input);
+
+                foreach (var obj in objs)   // Flickable: content item, content size, scroll state
+                    if (obj is QuillFlickable flick) SetupFlickable(flick);
 
                 var changeHandlers = SetupHandlers(pairs);   // compile signal handlers
                 Flush();
@@ -336,7 +356,8 @@ namespace Quill
                     {
                         string propName = char.ToLowerInvariant(key[2]) + key.Substring(3, key.Length - 10);
                         string sigName = char.ToLowerInvariant(key[2]) + key.Substring(3);
-                        if (!obj.SignalParams.ContainsKey(sigName) && obj.HasProperty(propName)
+                        if (!obj.SignalParams.ContainsKey(sigName)
+                            && (obj.HasProperty(propName) || obj.FindPropertyOrLazy(propName) != null)
                             && _changeSubscriptions.Add((obj, key)))
                         {
                             changeHandlers.Add((obj, key, propName));
@@ -460,6 +481,11 @@ namespace Quill
                 case QuillBehavior b: RemoveBehavior(b); break;
                 case QuillRepeater r: r.Instances.Clear(); break;
                 case QuillPositioner pos: _positioners.Remove(pos); break;
+                case QuillFlickable fl:
+                    _flickables.Remove(fl);
+                    if (_flickDrag == fl) _flickDrag = null;
+                    _flickChain.Remove(fl);
+                    break;
             }
             RemoveStates(o);
 

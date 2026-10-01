@@ -1,0 +1,19 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// FocusRing — Slate. The outline a control shows while it has keyboard / gamepad focus: put it last
+// in the control (it fills its parent, `gap` px outside it) and show it on `visualFocus`, which only
+// keyboard and gamepad navigation set — a mouse user never sees it. Every theme's controls use it;
+// a theme restyles it like any other control.
+// Use:  FocusRing { visible: control.visualFocus }
+Rectangle {
+    property real gap: 4
+
+    anchors.fill: parent
+    anchors.margins: -gap
+    radius: Theme.radius > 0 ? Theme.radius + gap : 0
+    color: "transparent"
+    border.width: Math.max(2, Theme.borderWidth)
+    border.color: Theme.focus
+    visible: false
+}

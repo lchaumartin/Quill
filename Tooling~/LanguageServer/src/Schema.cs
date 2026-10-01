@@ -82,10 +82,12 @@ namespace Quill.LanguageServer
         {
             { "Theme", "The current theme's palette (Theme.quill): `Theme.accent`, `Theme.radius`… Live: assign to restyle." },
             { "Color", "Colour helpers: `Color.rgba`, `Color.lighter`, `Color.alpha`…" },
-            { "Quill", "Alignment, mouse-button and orientation enums: `Quill.AlignLeft`, `Quill.LeftButton`, `Quill.Horizontal`…" },
+            { "Quill", "Alignment, mouse-button, orientation and key enums: `Quill.AlignLeft`, `Quill.LeftButton`, `Quill.Horizontal`, `Quill.Key_Escape`, `Quill.ShiftModifier`…" },
             { "Math", "JavaScript-style maths: `Math.min`, `Math.clamp`, `Math.PI`…" },
             { "Easing", "Easing curves for animations: `Easing.OutCubic`, `Easing.InOutQuad`…" },
             { "Text", "Text enums: alignment (`Text.AlignHCenter`), wrapping (`Text.WordWrap`), eliding (`Text.ElideRight`)." },
+            { "Flickable", "Flickable enums: `Flickable.VerticalFlick`, `Flickable.HorizontalFlick`… (flickableDirection), `Flickable.StopAtBounds`, `Flickable.DragAndOvershootBounds`… (boundsBehavior)." },
+            { "TextInput", "echoMode enums: `TextInput.Normal`, `TextInput.Password`, `TextInput.NoEcho`, `TextInput.PasswordEchoOnEdit`." },
             { "Font", "Capitalization enums: `Font.AllUppercase`, `Font.AllLowercase`, `Font.Capitalize`…" },
             { "Drag", "Drag axis enums: `Drag.XAxis`, `Drag.YAxis`, `Drag.XAndYAxis`." },
             { "Animation", "`Animation.Infinite` — loop forever (`loops: Animation.Infinite`)." },
@@ -126,6 +128,26 @@ namespace Quill.LanguageServer
             {
                 { "LeftButton", "Mouse button" }, { "RightButton", "Mouse button" }, { "MiddleButton", "Mouse button" },
                 { "Horizontal", "Orientation" }, { "Vertical", "Orientation" },
+            };
+            foreach (var (name, _) in QuillKeys.All())
+                Enums["Quill"][name] = name.StartsWith("Key_") ? "Key code (`event.key`)" : "Keyboard modifier flag (`event.modifiers`)";
+            Enums["Flickable"] = new Dictionary<string, string>
+            {
+                { "AutoFlickDirection", "flickableDirection: the axes where the content is larger than the view (default)" },
+                { "AutoFlickIfNeeded", "flickableDirection: same as AutoFlickDirection" },
+                { "HorizontalFlick", "flickableDirection: horizontal only" },
+                { "VerticalFlick", "flickableDirection: vertical only" },
+                { "HorizontalAndVerticalFlick", "flickableDirection: both axes" },
+                { "StopAtBounds", "boundsBehavior: the content stops at its edges" },
+                { "DragOverBounds", "boundsBehavior: dragging can pull past the edges; flicks stop at them" },
+                { "OvershootBounds", "boundsBehavior: flicks can overshoot the edges; dragging stops at them" },
+                { "DragAndOvershootBounds", "boundsBehavior: both (default)" },
+            };
+            Enums["TextInput"] = new Dictionary<string, string>
+            {
+                { "Normal", "echoMode: show the text" }, { "NoEcho", "echoMode: show nothing" },
+                { "Password", "echoMode: show `passwordCharacter` for every character" },
+                { "PasswordEchoOnEdit", "echoMode: behaves as `Password` for now" },
             };
             Enums["Color"] = new Dictionary<string, string>
             {
@@ -190,7 +212,19 @@ namespace Quill.LanguageServer
                 .P("top", "anchor line", "This item's top edge, as an anchor target.", true)
                 .P("bottom", "anchor line", "This item's bottom edge, as an anchor target.", true)
                 .P("horizontalCenter", "anchor line", "This item's horizontal centre, as an anchor target.", true)
-                .P("verticalCenter", "anchor line", "This item's vertical centre, as an anchor target.", true);
+                .P("verticalCenter", "anchor line", "This item's vertical centre, as an anchor target.", true)
+                .P("clip", "bool", "Cut this item's children (everything drawn inside it) to its bounds; also limits where they take the pointer.")
+                .P("focus", "bool", "Set it to give this item active focus (`focus: true` on load); false once another item takes it.")
+                .P("activeFocus", "bool", "This item receives key events now.", true)
+                .P("activeFocusOnTab", "bool", "A stop for Tab / Backtab, and for arrow-key / D-pad navigation.")
+                .P("visualFocus", "bool", "Active focus that came from the keyboard or gamepad: show a focus ring. A pointer press clears it.", true)
+                .P("KeyNavigation.tab", "Item", "Where Tab goes from here (default: the next stop in tree order).")
+                .P("KeyNavigation.backtab", "Item", "Where Backtab / Shift+Tab goes from here.")
+                .P("KeyNavigation.up", "Item", "Where Up / D-pad up goes from here (default: the nearest stop above).")
+                .P("KeyNavigation.down", "Item", "Where Down goes from here.")
+                .P("KeyNavigation.left", "Item", "Where Left goes from here.")
+                .P("KeyNavigation.right", "Item", "Where Right goes from here.")
+                .M("forceActiveFocus", "forceActiveFocus()", "Give this item active focus.");
             Add(item);
 
             Add(new ElementInfo { Name = "Object", Doc = "A plain non-visual object: a bag of declared properties (a theme's palette is one)." });
@@ -224,6 +258,48 @@ namespace Quill.LanguageServer
                 .P("contentHeight", "real", "Measured height of the text.", true)
                 .P("lineCount", "int", "Number of laid-out lines.", true));
 
+            Add(new ElementInfo { Name = "TextInput", Doc = "One line of editable text: caret, selection, clipboard, password echo. Typing reaches it while it has active focus; pressing on it focuses it." }
+                .From(item)
+                .P("text", "string", "The text.")
+                .P("color", "color", "Text colour.")
+                .P("selectionColor", "color", "Selection highlight.")
+                .P("selectedTextColor", "color", "Colour of selected text.")
+                .P("fontSize", "real", "Size in px.")
+                .P("font.pixelSize", "real", "Same as `fontSize`.")
+                .P("font.pointSize", "real", "Same as `fontSize`.")
+                .P("font.bold", "bool", "Bold.")
+                .P("font.italic", "bool", "Italic.")
+                .P("font.family", "string", "As for Text.")
+                .P("font.letterSpacing", "real", "Extra px between characters.")
+                .P("horizontalAlignment", "enum", "`Text.AlignLeft` / `AlignHCenter` / `AlignRight`.")
+                .P("verticalAlignment", "enum", "`Text.AlignTop` / `AlignVCenter` / `AlignBottom`.")
+                .P("cursorPosition", "int", "Caret position (characters).")
+                .P("selectionStart", "int", "Start of the selection.", true)
+                .P("selectionEnd", "int", "End of the selection.", true)
+                .P("selectedText", "string", "The selected text (empty for passwords).", true)
+                .P("displayText", "string", "The text as shown (bullets for passwords).", true)
+                .P("maximumLength", "int", "Longest text accepted.")
+                .P("echoMode", "enum", "`TextInput.Normal`, `Password`, `NoEcho`, `PasswordEchoOnEdit`.")
+                .P("passwordCharacter", "string", "Shown for each character of a password.")
+                .P("readOnly", "bool", "Selectable and copyable, not editable.")
+                .P("activeFocusOnPress", "bool", "A press focuses it.")
+                .P("enabled", "bool", "Accepts focus and input.")
+                .P("hovered", "bool", "The pointer is over it.", true)
+                .P("cursorVisible", "bool", "The caret shows (focused and editable).", true)
+                .P("contentWidth", "real", "Measured width of the text.", true)
+                .P("contentHeight", "real", "Measured height of a line.", true)
+                .S("accepted", "Return / Enter pressed.")
+                .S("editingFinished", "Return / Enter pressed, or focus lost.")
+                .S("textEdited", "The user changed the text (not a binding or assignment).")
+                .M("selectAll", "selectAll()", "Select everything.")
+                .M("select", "select(start, end)", "Select a range.")
+                .M("deselect", "deselect()", "Clear the selection.")
+                .M("clear", "clear()", "Empty the text.")
+                .M("copy", "copy()", "Copy the selection.").M("cut", "cut()", "Cut the selection.").M("paste", "paste()", "Paste at the caret.")
+                .M("insert", "insert(position, text)", "Insert text.")
+                .M("remove", "remove(start, end)", "Remove a range.")
+                .M("positionAt", "positionAt(x)", "The caret position nearest a local x."));
+
             Add(new ElementInfo { Name = "Image", Doc = "A textured quad. `source` is a path under any Resources folder." }
                 .From(item)
                 .P("source", "string", "Resources path, e.g. \"icons/logo\".")
@@ -249,6 +325,7 @@ namespace Quill.LanguageServer
                 .From(item)
                 .P("enabled", "bool", "Accepts input.")
                 .P("hoverEnabled", "bool", "Track the pointer while not pressed (`containsMouse`, `onPositionChanged`).")
+                .P("preventStealing", "bool", "Keep the press even when the pointer then drags a Flickable it is in.")
                 .P("pressed", "bool", "The pointer is pressed on it.", true)
                 .P("containsMouse", "bool", "The pointer is over it.", true)
                 .P("mouseX", "real", "Pointer x, local px.", true)
@@ -263,7 +340,40 @@ namespace Quill.LanguageServer
                 .S("clicked", "Pressed and released inside.", "mouse").S("doubleClicked", "Two clicks in quick succession.", "mouse")
                 .S("pressAndHold", "Held down for a while.", "mouse").S("positionChanged", "Pointer moved.", "mouse")
                 .S("entered", "Pointer entered (hoverEnabled).").S("exited", "Pointer left (hoverEnabled).")
+                .S("canceled", "A Flickable took the press (the drag scrolls it): no release, no click.")
                 .S("wheel", "Mouse wheel; `wheel.angleDelta.y` is 120 per notch.", "wheel"));
+
+            Add(new ElementInfo { Name = "Flickable", Doc = "A viewport onto larger content: the items inside it scroll by drag, flick, wheel and keyboard / gamepad focus. Clips by default." }
+                .From(item)
+                .P("clip", "bool", "Cut the content to the view (default true).")
+                .P("contentWidth", "real", "Width of the content (default: the content's extent).")
+                .P("contentHeight", "real", "Height of the content (default: the content's extent).")
+                .P("contentX", "real", "Horizontal scroll position (px from the content's left).")
+                .P("contentY", "real", "Vertical scroll position (px from the content's top).")
+                .P("contentItem", "Item", "The item holding the content.", true)
+                .P("interactive", "bool", "Drag, flick and wheel scroll it.")
+                .P("flickableDirection", "enum", "`Flickable.AutoFlickDirection` (default), `HorizontalFlick`, `VerticalFlick`, `HorizontalAndVerticalFlick`.")
+                .P("boundsBehavior", "enum", "`Flickable.StopAtBounds`, `DragOverBounds`, `OvershootBounds`, `DragAndOvershootBounds` (default).")
+                .P("flickDeceleration", "real", "How fast a flick slows down (px/s²).")
+                .P("maximumFlickVelocity", "real", "Fastest flick (px/s).")
+                .P("moving", "bool", "Moving by any means (drag, flick, wheel, returning to the bounds).", true)
+                .P("flicking", "bool", "Moving on its own after a flick.", true)
+                .P("dragging", "bool", "The pointer is dragging it.", true)
+                .P("horizontalVelocity", "real", "Current flick speed, px/s.", true)
+                .P("verticalVelocity", "real", "Current flick speed, px/s.", true)
+                .P("atXBeginning", "bool", "Scrolled to the left edge.", true)
+                .P("atXEnd", "bool", "Scrolled to the right edge.", true)
+                .P("atYBeginning", "bool", "Scrolled to the top.", true)
+                .P("atYEnd", "bool", "Scrolled to the bottom.", true)
+                .P("visibleArea.xPosition", "real", "Left of the view as a fraction of the content width.", true)
+                .P("visibleArea.widthRatio", "real", "View width / content width (≤ 1).", true)
+                .P("visibleArea.yPosition", "real", "Top of the view as a fraction of the content height.", true)
+                .P("visibleArea.heightRatio", "real", "View height / content height (≤ 1).", true)
+                .S("movementStarted", "Started moving.").S("movementEnded", "Came to rest.")
+                .S("flickStarted", "A flick began.").S("flickEnded", "A flick finished.")
+                .M("flick", "flick(xVelocity, yVelocity)", "Flick in code (px/s; positive moves towards the start, as in QML).")
+                .M("cancelFlick", "cancelFlick()", "Stop a flick.")
+                .M("returnToBounds", "returnToBounds()", "Move back inside the content's edges."));
 
             Add(new ElementInfo { Name = "ShaderEffect", Doc = "A quad drawn with a Unity shader (`shader` = its name). Every other property is forwarded as a uniform.", Open = true }
                 .From(item)

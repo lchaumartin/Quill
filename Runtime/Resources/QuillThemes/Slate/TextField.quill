@@ -1,0 +1,76 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// TextField — Slate. Same API in every theme:
+//   text (string), placeholderText (string), echoMode (TextInput.Normal / Password / …),
+//   maximumLength (int), readOnly (bool), enabled (bool), hovered (bool, read-only)
+//   signal accepted (Return / Enter), signal editingFinished (Return / Enter, or focus lost),
+//   signal textEdited (the user changed the text)
+// Use:  TextField { width: 240; placeholderText: "Player name"; onAccepted: rename(text) }
+Rectangle {
+    id: control
+
+    property alias text: input.text
+    property string placeholderText: ""
+    property alias echoMode: input.echoMode
+    property alias maximumLength: input.maximumLength
+    property alias readOnly: input.readOnly
+    property bool enabled: true
+    property bool hovered: area.containsMouse || input.hovered
+    signal accepted
+    signal editingFinished
+    signal textEdited
+
+    // Keyboard / gamepad: Tab or the D-pad reaches it and hands focus to the text; Left / Right
+    // move the caret, Up / Down move on to the neighbouring control.
+    activeFocusOnTab: true
+    onActiveFocusChanged: if (activeFocus) input.forceActiveFocus()
+
+    width: 240
+    height: 40
+    radius: Theme.radius
+    opacity: control.enabled ? 1 : 0.4
+    color: Theme.control
+    border.width: input.activeFocus ? Math.max(2, Theme.borderWidth) : Theme.borderWidth
+    border.color: input.activeFocus ? Theme.focus : control.hovered ? Color.lighter(Theme.border, 1.5) : Theme.border
+    Behavior on border.color { ColorAnimation { duration: Theme.duration } }
+
+    // Presses on the padding focus the text too, with the caret at the nearest end.
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        enabled: control.enabled
+        onPressed: {
+            input.forceActiveFocus()
+            input.cursorPosition = mouse.x < input.x ? 0 : input.text.length
+        }
+    }
+
+    Text {
+        text: control.placeholderText
+        color: Theme.textMuted
+        fontSize: Theme.fontSize
+        font.family: Theme.font
+        anchors.left: input.left
+        anchors.verticalCenter: parent.verticalCenter
+        visible: input.text.length == 0
+    }
+
+    TextInput {
+        id: input
+        x: 12
+        width: control.width - 24
+        height: control.height
+        verticalAlignment: Text.AlignVCenter
+        enabled: control.enabled
+        color: Theme.text
+        selectionColor: Color.alpha(Theme.accent, 0.45)
+        selectedTextColor: Theme.text
+        fontSize: Theme.fontSize
+        font.family: Theme.font
+        onAccepted: control.accepted()
+        onEditingFinished: control.editingFinished()
+        onTextEdited: control.textEdited()
+    }
+}

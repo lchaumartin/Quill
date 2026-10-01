@@ -12,6 +12,26 @@ namespace Quill
     /// </summary>
     public class QuillItem : QuillObject
     {
+        /// <summary>
+        /// Set by <see cref="QuillEngine.CollectVisuals"/> for renderers: whether this item is drawn
+        /// through a clip rectangle (an ancestor with <c>clip: true</c>), and that rectangle — left, top,
+        /// right, bottom in absolute Quill pixels.
+        /// </summary>
+        public bool Clipped { get; internal set; }
+        public float ClipL { get; internal set; }
+        public float ClipT { get; internal set; }
+        public float ClipR { get; internal set; }
+        public float ClipB { get; internal set; }
+
+        /// <summary>Children declared inside this item go here (a Flickable puts them in its contentItem).</summary>
+        internal virtual QuillItem ChildHost(QuillObject child) => this;
+
+        /// <summary>
+        /// This item clips its children (and its own drawing, for a TextInput) to its bounds:
+        /// <c>clip: true</c>, a Flickable by default, and every TextInput.
+        /// </summary>
+        internal bool ClipsChildren => this is QuillTextInput || (FindProperty("clip") is QuillProperty p && QuillConvert.ToBool(p.Raw));
+
         public virtual void SeedDefaults()
         {
             Property("x").SetValue(0.0);
@@ -166,7 +186,7 @@ namespace Quill
     public sealed class QuillMouseArea : QuillItem
     {
         public event System.Action Pressed, Released, Clicked, Entered, Exited, PositionChanged;
-        public event System.Action DoubleClicked, PressAndHold, Wheel;
+        public event System.Action DoubleClicked, PressAndHold, Wheel, Canceled;
 
         public override void SeedDefaults()
         {
@@ -177,6 +197,7 @@ namespace Quill
             Property("containsMouse").SetValue(false);
             Property("mouseX").SetValue(0.0);   // pointer position in area-local pixels
             Property("mouseY").SetValue(0.0);
+            Property("preventStealing").SetValue(false);   // keep a press even when a Flickable is dragged
 
             Property("drag.target").SetValue(null);
             Property("drag.axis").SetValue(3.0);          // Drag.XAndYAxis
@@ -216,6 +237,7 @@ namespace Quill
                 case "onDoubleClicked": DoubleClicked?.Invoke(); break;
                 case "onPressAndHold": PressAndHold?.Invoke(); break;
                 case "onWheel": Wheel?.Invoke(); break;
+                case "onCanceled": Canceled?.Invoke(); break;
             }
         }
     }
@@ -349,12 +371,14 @@ namespace Quill
                 { "Object", () => new QuillNonVisual() },
                 { "Rectangle", () => new QuillRectangle() },
                 { "Text", () => new QuillText() },
+                { "TextInput", () => new QuillTextInput() },
                 { "Image", () => new QuillImage() },
                 { "Row", () => new QuillPositioner() },
                 { "Column", () => new QuillPositioner() },
                 { "Grid", () => new QuillPositioner() },
                 { "Flow", () => new QuillPositioner() },
                 { "MouseArea", () => new QuillMouseArea() },
+                { "Flickable", () => new QuillFlickable() },
                 { "ShaderEffect", () => new QuillShaderEffect() },
                 { "Timer", () => new QuillTimer() },
                 { "Behavior", () => new QuillBehavior() },

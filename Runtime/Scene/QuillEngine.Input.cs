@@ -47,7 +47,10 @@ namespace Quill
             // Press / release / click (click = press and release over the same area).
             if (down && !_wasDown)
             {
-                _grabber = hit;
+                FocusOnPointerPress(hit);
+                // A press on a Flickable that is still moving just stops it.
+                bool stoppedFlick = FlickPress(px, py, hit);
+                _grabber = stoppedFlick ? null : hit;
                 _suppressClick = false;
                 if (_grabber != null)
                 {
@@ -76,6 +79,7 @@ namespace Quill
             }
             else if (!down && _wasDown)
             {
+                FlickRelease();
                 if (_grabber != null)
                 {
                     var g = _grabber;
@@ -92,6 +96,11 @@ namespace Quill
                     _grabber = null;
                 }
             }
+
+            // A Flickable takes the drag once the pointer has clearly moved along an axis it scrolls;
+            // the area that had the press is cancelled (no click).
+            if (down && _wasDown && moved && FlickMove(px, py, _grabber) && _grabber != null)
+                CancelGrab();
 
             if (down && _grabber != null)
             {
@@ -114,26 +123,21 @@ namespace Quill
                 else if (_hovered != null && _hovered.HoverEnabled) _hovered.Emit("onPositionChanged", MouseArgs(_hovered, px, py));
             }
 
-            // Wheel: the topmost area under the pointer that handles it.
-            if (wheelX != 0 || wheelY != 0)
-            {
-                var w = HitTest(px, py, a => a.Handlers.ContainsKey("onWheel") || a.HasWheelListener);
-                if (w != null)
-                {
-                    var wheel = new QuillObject { TypeName = "WheelEvent" };
-                    var delta = new QuillObject { TypeName = "Point" };
-                    delta.Property("x").SetValue(wheelX);
-                    delta.Property("y").SetValue(wheelY);
-                    wheel.Property("angleDelta").SetValue(delta);
-                    wheel.Property("pixelDelta").SetValue(delta);
-                    wheel.Property("x").SetValue(px - w.AbsX());
-                    wheel.Property("y").SetValue(py - w.AbsY());
-                    wheel.Property("accepted").SetValue(true);
-                    w.Emit("onWheel", new object[] { wheel });
-                }
-            }
+            // Wheel: an area that handles it, or the Flickable under the pointer.
+            if (wheelX != 0 || wheelY != 0) DispatchWheel(px, py, wheelX, wheelY);
 
             _wasDown = down;
+        }
+
+        // The pressed area loses the press to a Flickable: no release, no click.
+        private void CancelGrab()
+        {
+            var g = _grabber;
+            _grabber = null;
+            _suppressClick = true;
+            if (g.Flag("drag.active", false)) g.Property("drag.active").SetValue(false);
+            g.Property("pressed").SetValue(false);
+            g.Emit("onCanceled");
         }
 
         private static object[] MouseArgs(QuillMouseArea a, double px, double py)
@@ -168,6 +172,12 @@ namespace Quill
 
         private static double Clamp(double v, double lo, double hi) => v < lo ? lo : v > hi ? hi : v;
 
+        private static bool Contains(QuillItem it, double px, double py)
+        {
+            float x = it.AbsX(), y = it.AbsY();
+            return px >= x && px <= x + it.Num("width") && py >= y && py <= y + it.Num("height");
+        }
+
         private static void SetLocalPointer(QuillMouseArea a, double px, double py)
         {
             a.Property("mouseX").SetValue(px - a.AbsX());
@@ -181,7 +191,11 @@ namespace Quill
         private static QuillMouseArea HitRecursive(QuillObject o, double px, double py, Func<QuillMouseArea, bool> filter)
         {
             if (o is QuillNonVisual) return null;
-            if (o is QuillItem item && !item.Flag("visible")) return null;
+            if (o is QuillItem item)
+            {
+                if (!item.Flag("visible")) return null;
+                if (item.ClipsChildren && !Contains(item, px, py)) return null;   // clipped away
+            }
 
             for (int i = o.Children.Count - 1; i >= 0; i--)
             {

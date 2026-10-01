@@ -211,7 +211,14 @@ namespace Quill
             })
                 quill.Property(k).SetValue(v);
 
+            foreach (var (k, v) in QuillKeys.All()) quill.Property(k).SetValue(v);   // Quill.Key_*, Quill.*Modifier
+
             MakeEnum("Drag", ("XAxis", 1.0), ("YAxis", 2.0), ("XAndYAxis", 3.0));
+            MakeEnum("Flickable", ("AutoFlickDirection", 0.0), ("HorizontalFlick", 1.0), ("VerticalFlick", 2.0),
+                                  ("HorizontalAndVerticalFlick", 3.0), ("AutoFlickIfNeeded", 12.0),
+                                  ("StopAtBounds", 0.0), ("DragOverBounds", 1.0), ("OvershootBounds", 2.0),
+                                  ("DragAndOvershootBounds", 3.0));
+            MakeEnum("TextInput", ("Normal", 0.0), ("NoEcho", 1.0), ("Password", 2.0), ("PasswordEchoOnEdit", 3.0));
             MakeEnum("Font", ("MixedCase", 0.0), ("AllUppercase", 1.0), ("AllLowercase", 2.0),
                              ("SmallCaps", 3.0), ("Capitalize", 4.0));
         }
@@ -229,6 +236,11 @@ namespace Quill
             if (obj == null) return null;
             if (obj.Functions.TryGetValue(name, out var fn)) return InvokeFunction(obj, fn, args);
             if (obj.TryInvokeMethod(this, name, args, out var result)) return result;
+            if (name == "forceActiveFocus" && obj is QuillItem focusItem && !(obj is QuillNonVisual))
+            {
+                SetActiveFocus(focusItem, FocusReason.Other);
+                return null;
+            }
             obj.Emit(QuillObject.HandlerKey(name), args);
             return null;
         }
@@ -273,7 +285,9 @@ namespace Quill
         private void RunHandler(QuillObject owner, string key, List<HandlerStmt> body, object[] args)
         {
             var ctx = new EvalContext(this, owner) { Locals = new Dictionary<string, object>() };
-            if (args != null && args.Length > 0 && key.Length > 2 && key.StartsWith("on"))
+            if (args != null && args.Length > 0 && key.StartsWith("Keys.", System.StringComparison.Ordinal))
+                ctx.Locals["event"] = args[0];
+            else if (args != null && args.Length > 0 && key.Length > 2 && key.StartsWith("on"))
             {
                 string sig = char.ToLowerInvariant(key[2]) + key.Substring(3);
                 if (owner.SignalParams.TryGetValue(sig, out var names))
@@ -308,9 +322,11 @@ namespace Quill
         public void Update(double dtSeconds, double px, double py, bool pointerDown, double wheelX, double wheelY)
         {
             Time += dtSeconds;
+            ValidateFocus();
             ProcessPointer(px, py, pointerDown, wheelX, wheelY);
             Flush();
             AdvanceTime(dtSeconds);
+            TickFlickables(dtSeconds);
             Flush();
         }
 
@@ -318,7 +334,9 @@ namespace Quill
         public void Update(double dtSeconds)
         {
             Time += dtSeconds;
+            ValidateFocus();
             AdvanceTime(dtSeconds);
+            TickFlickables(dtSeconds);
             Flush();
         }
 
@@ -344,24 +362,46 @@ namespace Quill
         /// Depth-first list of every visible item in back-to-front draw order. The renderer
         /// dispatches each to the right layer (rectangle / text / image) by type.
         /// </summary>
+        /// <remarks>
+        /// Each item also gets the clip rectangle it is drawn through (<c>clip: true</c> on an
+        /// ancestor), which the layers apply. Clipped-out items are still listed: Text has to be
+        /// measured for layout whether or not it shows.
+        /// </remarks>
         public void CollectVisuals(List<QuillItem> output)
         {
             output.Clear();
-            if (Root != null) CollectRecursive(Root, output);
+            if (Root != null) CollectRecursive(Root, output, false, 0, 0, 0, 0);
         }
 
-        private static void CollectRecursive(QuillObject obj, List<QuillItem> output)
+        private static void CollectRecursive(QuillObject obj, List<QuillItem> output,
+                                             bool clipped, float cl, float ct, float cr, float cb)
         {
             if (obj is QuillNonVisual) return;
             if (obj is QuillItem item)
             {
                 if (!item.Flag("visible")) return;   // a hidden item hides its subtree
+                item.Clipped = clipped;
+                item.ClipL = cl; item.ClipT = ct; item.ClipR = cr; item.ClipB = cb;
                 output.Add(item);
+
+                if (item.ClipsChildren)
+                {
+                    float ax = item.AbsX(), ay = item.AbsY();
+                    float r = ax + item.Num("width"), b = ay + item.Num("height");
+                    if (clipped)
+                    {
+                        if (ax > cl) cl = ax;
+                        if (ay > ct) ct = ay;
+                        if (r < cr) cr = r;
+                        if (b < cb) cb = b;
+                    }
+                    else { cl = ax; ct = ay; cr = r; cb = b; clipped = true; }
+                }
             }
 
             // Parents are added before children, so children composite on top — matching the tree.
             for (int i = 0; i < obj.Children.Count; i++)
-                CollectRecursive(obj.Children[i], output);
+                CollectRecursive(obj.Children[i], output, clipped, cl, ct, cr, cb);
         }
     }
 }

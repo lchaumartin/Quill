@@ -1,0 +1,17 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// FocusRing — Vector: corner brackets locking onto the control that has keyboard / gamepad focus.
+// Same API in every theme: put it last in a control and show it on `visualFocus`;
+//   gap (real, px outside the control), radius (unused here: brackets are square)
+// Use:  FocusRing { visible: control.visualFocus }
+Brackets {
+    property real gap: 4
+    property real radius: 0
+
+    anchors.margins: -gap
+    length: 8
+    thickness: 2
+    color: Theme.focus
+    visible: false
+}

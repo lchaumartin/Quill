@@ -60,6 +60,7 @@ namespace Quill.LanguageServer
                     {
                         var sig = SignalForHandler(api, p.Name);
                         if (sig != null) foreach (var n in sig.Params) span.Locals.Add(n);
+                        if (p.Name.StartsWith("Keys.", StringComparison.Ordinal)) span.Locals.Add("event");
                     }
                     AddDeclaredLocals(span);
                     list.Add(span);
@@ -125,7 +126,13 @@ namespace Quill.LanguageServer
         {
             if (r == null) return null;
             if (r.Kind == "id") return _ws.ObjectApi(_doc, r.Obj);
-            if (r.Kind == "global" && r.Name == "parent") return at?.Parent != null ? _ws.ObjectApi(_doc, at.Parent) : null;
+            if (r.Kind == "global" && r.Name == "parent")
+            {
+                // A Repeater's delegate instances are children of the Repeater's parent.
+                var p = at?.Parent;
+                if (p != null && p.Type == "Repeater") p = p.Parent;
+                return p != null ? _ws.ObjectApi(_doc, p) : null;
+            }
             if (r.Kind == "global" && r.Name == "Theme") return _ws.Api("Theme");
             return null;
         }
@@ -205,6 +212,17 @@ namespace Quill.LanguageServer
                     if (p.Handler != null)
                     {
                         if (p.Name == "Component.onCompleted" || (o.Type == "ScriptAction" && p.Name == "script")) continue;
+                        if (p.Name.StartsWith("Keys.", StringComparison.Ordinal))
+                        {
+                            string h = p.Name.Substring("Keys.".Length);
+                            if (!QuillKeys.HandlerNames.Contains(h))
+                                list.Add(new Diagnostic
+                                {
+                                    Start = p.NameOffset, End = p.NameEnd, Severity = 2, Code = "unknown-signal",
+                                    Message = $"Keys has no handler '{h}'." + Suggest(h, QuillKeys.HandlerNames),
+                                });
+                            continue;
+                        }
                         if (p.Name.Contains('.')) continue;
                         if (SignalForHandler(api, p.Name) != null) continue;
                         // on<Property>Changed

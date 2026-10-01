@@ -14,6 +14,12 @@ Item {
     property bool hovered: area.containsMouse
     signal clicked
 
+    // Keyboard / gamepad: Tab or the D-pad reaches it; Space / Return (gamepad South) clicks.
+    activeFocusOnTab: true
+    Keys.onSpacePressed: control.clicked()
+    Keys.onReturnPressed: control.clicked()
+    Keys.onEnterPressed: control.clicked()
+
     width: Math.max(100, label.contentWidth + 40)
     height: 44
     opacity: control.enabled ? 1 : 0.45
@@ -58,4 +64,6 @@ Item {
         enabled: control.enabled
         onClicked: control.clicked()
     }
+
+    FocusRing { visible: control.visualFocus }
 }

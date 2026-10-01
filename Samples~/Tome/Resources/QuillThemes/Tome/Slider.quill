@@ -31,6 +31,21 @@ Item {
         if (v != control.value) { control.value = v; control.moved() }
     }
 
+    // Keyboard / gamepad: Left / Right step the value (by `step`, or a twentieth of the range),
+    // Home / End jump to the ends; Up / Down move on to the next control.
+    activeFocusOnTab: true
+    function moveTo(v) {
+        v = Math.clamp(v, Math.min(control.from, control.to), Math.max(control.from, control.to))
+        if (v != control.value) { control.value = v; control.moved() }
+    }
+    function stepBy(n) { control.moveTo(control.value + n * (control.step > 0 ? control.step : (control.to - control.from) / 20)) }
+    Keys.onLeftPressed: control.stepBy(-1)
+    Keys.onRightPressed: control.stepBy(1)
+    Keys.onPressed: {
+        if (event.key == Quill.Key_Home) { control.moveTo(control.from); event.accepted = true }
+        else if (event.key == Quill.Key_End) { control.moveTo(control.to); event.accepted = true }
+    }
+
     Repeater {
         model: control.ticks + 1
         Rectangle {
@@ -85,4 +100,6 @@ Item {
         onPressed: control.setFromX(mouse.x)
         onPositionChanged: { if (area.pressed) control.setFromX(mouse.x) }
     }
+
+    FocusRing { visible: control.visualFocus }
 }

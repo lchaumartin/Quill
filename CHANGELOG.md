@@ -24,6 +24,49 @@ All notable changes to **Quill** are documented here. This project adheres to
   frame; animated documents allocate only new colours and new strings. Results are unchanged.
 
 ### Added
+- **Keyboard focus, `Keys` handlers and navigation.** Items take active focus with `focus: true` or
+  `forceActiveFocus()`; `activeFocus` and `visualFocus` (focus that came from the keyboard or gamepad —
+  what focus rings bind to) are read-only. `Keys.onPressed`, `Keys.onReleased` and `Keys.on<Key>Pressed`
+  get an `event` (`key`, `modifiers`, `text`, `isAutoRepeat`, `gamepad`, `accepted`) and bubble to the
+  parents until accepted. `activeFocusOnTab` items are navigation stops: Tab / Shift+Tab walk them in
+  tree order, the arrow keys and D-pad move to the nearest one in that direction, and
+  `KeyNavigation.tab/backtab/up/down/left/right` override either. Key codes and modifiers are
+  `Quill.Key_*` and `Quill.*Modifier`.
+- **`TextInput`** — one line of editable text: caret, selection (keyboard, drag, double-click), word
+  jumps, clipboard, `maximumLength`, `readOnly`, password echo, horizontal scrolling; `onAccepted`,
+  `onEditingFinished`, `onTextEdited`; `selectAll()`, `select()`, `copy()`, `paste()`, `insert()`,
+  `remove()`, `positionAt()` and more.
+- **Keyboard and gamepad on `QuillSurface`** (`KeyboardInput`, `GamepadInput`, `SpatialNavigation`):
+  keys and typed text from the Input System or the legacy Input Manager, the gamepad mapped to keys
+  (D-pad / left stick → arrows, South → Return, East → Escape, shoulders → Backtab / Tab, Start → Menu),
+  and key repeat. C#: `QuillEngine.KeyPress`, `KeyRelease`, `InputText`, `ForceActiveFocus`,
+  `ClearFocus`, `ActiveFocusItem`, `ActiveFocusChanged`; `QuillClipboard`.
+- **Every theme control works from the keyboard and gamepad**: Space / Return click a Button and
+  toggle a CheckBox or Switch; Left / Right / Home / End move a Slider; Left / Right switch tabs. The
+  focused control shows a `FocusRing` (a theme control; Vector draws corner brackets) in the new palette
+  colour `Theme.focus`, only for keyboard and gamepad users.
+- **`TextField`** theme control (Slate's, used by every theme with its palette), and a Text panel in the
+  gallery.
+- **`clip: true`** on any item: everything inside is cut to its bounds — rectangles in the vertex
+  shader (their quads shrink, so clipped-away pixels cost nothing), text glyphs, images and shader
+  effects on the CPU — and so is the pointer. Nested clips intersect. `QuillItem.Clipped` and
+  `ClipL/T/R/B` expose the rectangle to custom renderers.
+- **`Flickable`**: drag, flick with momentum (`flickDeceleration`, `maximumFlickVelocity`), bounds
+  behaviours with rubber-band overshoot, smooth wheel scrolling handed from inner to outer Flickables,
+  automatic `contentWidth` / `contentHeight`, `flickableDirection`, state for scroll bars
+  (`visibleArea.*`, `atYEnd`…), `onMovementStarted/Ended`, `onFlickStarted/Ended`, `flick()`,
+  `cancelFlick()`, `returnToBounds()`. It takes a drag over from the buttons it contains once the
+  pointer has clearly moved (they get the new `MouseArea.onCanceled`; `preventStealing` opts out).
+  Keyboard and gamepad: focusing an item inside scrolls it into view; arrow navigation walks a list
+  before leaving it and ignores items scrolled out of other views; a focused Flickable scrolls with the
+  arrows, Home / End and Page Up / Down. A MouseArea's wheel handler that sets
+  `wheel.accepted = false` now lets the wheel reach the Flickable underneath.
+- **`ScrollBar`** theme control (Slate's, used by every theme with its palette): shows a Flickable's
+  position, drags and jumps it; and a scrolling key-bindings list on the gallery's Controls tab.
+- Language server: `Flickable`, `clip`, `preventStealing`, `onCanceled` and the `Flickable.*` enums;
+  `parent` inside a Repeater delegate now resolves to the Repeater's parent.
+- Language server: `TextInput`, the focus properties, `KeyNavigation.*`, `forceActiveFocus()`, the key
+  enums, `Keys.*` handler names (checked, with suggestions) and `event` inside them.
 - Profiler markers on `QuillSurface`: `Quill.Surface`, enclosing `Quill.Tick` (input, animations, bindings),
   `Quill.Collect`, `Quill.Render.Rects`, `Quill.Render.ImagesEffects` and `Quill.Render.Text` — visible in the
   Unity Profiler and readable with a `ProfilerRecorder`.

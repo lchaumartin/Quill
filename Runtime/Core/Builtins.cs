@@ -28,7 +28,7 @@ namespace Quill
 
                 case QuillObject obj:
                 {
-                    var p = obj.FindProperty(member);
+                    var p = obj.FindPropertyOrLazy(member);
                     if (p != null) return p.Get();
                     if (obj.HasGroup(member)) return obj.Group(member);
                     return null;
@@ -64,7 +64,7 @@ namespace Quill
         public static double GetMemberNumber(object target, string member)
         {
             QuillProperty p = null;
-            if (target is QuillObject obj) p = obj.FindProperty(member);
+            if (target is QuillObject obj) p = obj.FindPropertyOrLazy(member);
             else if (target is QuillGroup g) p = g.Owner.FindProperty(g.FullName(member));
             return p != null ? p.GetNumber() : QuillConvert.ToDouble(GetMember(target, member));
         }

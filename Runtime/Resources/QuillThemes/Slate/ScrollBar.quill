@@ -1,0 +1,80 @@
+// Quill for Unity — a declarative, reactive UI framework.
+// Copyright (c) 2026 Leo CHAUMARTIN. Licensed under the MIT License - see LICENSE.md.
+//
+// ScrollBar — Slate. Same API in every theme:
+//   flickable (the Flickable it shows and scrolls), orientation (Quill.Vertical / Quill.Horizontal),
+//   interactive (bool: drag the handle, click the track to jump), enabled (bool)
+//   size, position (real, read-only: the visible part of the content, 0..1), active (bool, read-only)
+// Place it along the Flickable's edge; it hides itself when everything fits.
+// Use:  ScrollBar { flickable: list; anchors.right: list.right; anchors.top: list.top; anchors.bottom: list.bottom }
+Item {
+    id: control
+
+    property var flickable: null
+    property int orientation: Quill.Vertical
+    property bool interactive: true
+    property bool enabled: true
+    property bool vertical: control.orientation == Quill.Vertical
+    property real size: control.flickable == null ? 1
+        : control.vertical ? control.flickable.visibleArea.heightRatio : control.flickable.visibleArea.widthRatio
+    property real position: control.flickable == null ? 0
+        : control.vertical ? control.flickable.visibleArea.yPosition : control.flickable.visibleArea.xPosition
+    property bool active: area.pressed || area.containsMouse || (control.flickable != null && control.flickable.moving)
+
+    width: control.vertical ? 12 : 120
+    height: control.vertical ? 120 : 12
+    visible: control.flickable != null && control.size < 0.999
+    opacity: control.enabled ? 1 : 0.4
+
+    // Handle geometry along the bar: never shorter than 28 px, and kept inside the track while the
+    // content overshoots its ends.
+    property real length: control.vertical ? control.height : control.width
+    property real handleLength: Math.min(control.length, Math.max(28, control.size * control.length))
+    property real travel: control.length - control.handleLength
+    property real handleOffset: control.size < 1 ? Math.clamp(control.position / (1 - control.size), 0, 1) * control.travel : 0
+
+    // Handle offset (px along the bar) -> scroll position.
+    function scrollTo(offset) {
+        var f = control.flickable
+        var t = control.travel > 0 ? Math.clamp(offset / control.travel, 0, 1) : 0
+        if (control.vertical) f.contentY = t * Math.max(0, f.contentHeight - f.height)
+        else f.contentX = t * Math.max(0, f.contentWidth - f.width)
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        radius: Math.min(Theme.radius, control.vertical ? width / 2 : height / 2)
+        color: Theme.control
+        opacity: control.active ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.duration } }
+    }
+
+    Rectangle {
+        property real thickness: control.active ? 8 : 4
+        Behavior on thickness { NumberAnimation { duration: Theme.duration; easing.type: Easing.OutCubic } }
+        x: control.vertical ? (control.width - thickness) / 2 : control.handleOffset
+        y: control.vertical ? control.handleOffset : (control.height - thickness) / 2
+        width: control.vertical ? thickness : control.handleLength
+        height: control.vertical ? control.handleLength : thickness
+        radius: Math.min(Theme.radius, thickness / 2)
+        color: area.pressed ? Theme.accent : control.active ? Theme.textMuted : Color.alpha(Theme.textMuted, 0.6)
+        Behavior on color { ColorAnimation { duration: Theme.duration } }
+    }
+
+    MouseArea {
+        id: area
+        anchors.fill: parent
+        hoverEnabled: true
+        preventStealing: true
+        enabled: control.interactive && control.enabled
+        property real grab: 0      // where on the handle it was taken
+        onPressed: {
+            control.flickable.cancelFlick()
+            var p = control.vertical ? mouse.y : mouse.x
+            var onHandle = p >= control.handleOffset && p <= control.handleOffset + control.handleLength
+            area.grab = onHandle ? p - control.handleOffset : control.handleLength / 2
+            control.scrollTo(p - area.grab)
+        }
+        onPositionChanged: { if (area.pressed) control.scrollTo((control.vertical ? mouse.y : mouse.x) - area.grab) }
+    }
+}

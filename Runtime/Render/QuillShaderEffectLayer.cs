@@ -27,10 +27,7 @@ namespace Quill
         private readonly List<string> _shaderNames = new List<string>();
 
         private readonly Vector3[] _v = new Vector3[4];
-        private static readonly Vector2[] Uv =
-        {
-            new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f)
-        };
+        private readonly Vector2[] _uv = new Vector2[4];
         private static readonly int[] Tris = { 0, 1, 2, 0, 2, 3 };
 
         private static readonly int IdRect = Shader.PropertyToID("_Rect");
@@ -41,7 +38,8 @@ namespace Quill
         private static readonly HashSet<string> Reserved = new HashSet<string>
         {
             "x", "y", "z", "width", "height", "visible", "opacity", "enabled", "index", "shader",
-            "left", "right", "top", "bottom", "horizontalCenter", "verticalCenter", "state"
+            "left", "right", "top", "bottom", "horizontalCenter", "verticalCenter", "state", "clip",
+            "focus", "activeFocus", "activeFocusOnTab", "visualFocus"
         };
 
         public QuillShaderEffectLayer(Transform parent, int renderQueue)
@@ -52,26 +50,37 @@ namespace Quill
 
         public void Render(List<QuillShaderEffect> effects, float w, float h)
         {
-            for (int i = 0; i < effects.Count; i++)
+            int i = 0;
+            for (int n = 0; n < effects.Count; n++)
             {
-                var fx = effects[i];
+                var fx = effects[n];
+                float x = fx.AbsX(), y = fx.AbsY(), fw = fx.Num("width"), fh = fx.Num("height");
+
+                // Cut to the clip rectangle; uv and the uniforms still describe the whole effect, so
+                // the shader draws the same picture, just less of it.
+                float x0 = x, y0 = y, x1 = x + fw, y1 = y + fh;
+                if (!QuillSurface.ClipQuad(fx, ref x0, ref y0, ref x1, ref y1, out float s0, out float t0, out float s1, out float t1))
+                    continue;
+
                 string shaderName = QuillConvert.ToStr(fx.FindProperty("shader")?.Raw);
                 EnsureSlot(i, shaderName);
 
                 var mat = _materials[i];
-                if (mat == null) { _pool[i].SetActive(false); continue; }
+                if (mat == null) { _pool[i].SetActive(false); i++; continue; }
 
-                float x = fx.AbsX(), y = fx.AbsY(), fw = fx.Num("width"), fh = fx.Num("height");
-
-                _v[0] = QuillSurface.ToClip(x, y, w, h);
-                _v[1] = QuillSurface.ToClip(x + fw, y, w, h);
-                _v[2] = QuillSurface.ToClip(x + fw, y + fh, w, h);
-                _v[3] = QuillSurface.ToClip(x, y + fh, w, h);
+                _v[0] = QuillSurface.ToClip(x0, y0, w, h);
+                _v[1] = QuillSurface.ToClip(x1, y0, w, h);
+                _v[2] = QuillSurface.ToClip(x1, y1, w, h);
+                _v[3] = QuillSurface.ToClip(x0, y1, w, h);
+                _uv[0] = new Vector2(s0, t0);
+                _uv[1] = new Vector2(s1, t0);
+                _uv[2] = new Vector2(s1, t1);
+                _uv[3] = new Vector2(s0, t1);
 
                 var mesh = _meshes[i];
                 mesh.Clear();
                 mesh.vertices = _v;
-                mesh.uv = Uv;
+                mesh.uv = _uv;
                 mesh.triangles = Tris;
                 mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e5f);
 
@@ -92,10 +101,11 @@ namespace Quill
                 // sortingOrder: that outranks the render queue, so effects would cover the text.
                 mat.renderQueue = _renderQueue + Mathf.Min(i, MaxQueueSteps - 1);
                 _pool[i].SetActive(true);
+                i++;
             }
 
-            for (int i = effects.Count; i < _pool.Count; i++)
-                _pool[i].SetActive(false);
+            for (int k = i; k < _pool.Count; k++)
+                _pool[k].SetActive(false);
         }
 
         private static void ForwardUniform(Material mat, string name, object value)

@@ -29,7 +29,10 @@ of scope. It is the reference for the asset's feature surface.
 - `Item`, `Rectangle` (corner radius, `border.width/color`), `Text` (wrapping, alignment, eliding,
   bold/italic, line height, implicit size), `Image` (texture from `Resources`), positioners `Row` /
   `Column` / `Grid` / `Flow` (padding, hidden children skipped), `Repeater` (live count or list model,
-  `modelData`, per-instance id scope), `MouseArea`, `ShaderEffect`, `Timer`.
+  `modelData`, per-instance id scope), `MouseArea`, `TextInput` (one line: caret, selection, clipboard,
+  `maximumLength`, `readOnly`, password echo, horizontal scrolling), `Flickable` (drag, flick with
+  momentum and overshoot, wheel, keyboard / gamepad scrolling and scroll-into-view, auto content size),
+  `ShaderEffect`, `Timer`.
 
 **Animation**
 - `NumberAnimation`, `PropertyAnimation`, `ColorAnimation`, `SpringAnimation`, `SmoothedAnimation`,
@@ -42,6 +45,8 @@ of scope. It is the reference for the asset's feature surface.
   lists, `reversible`), restoring original values and bindings.
 
 **Layout**
+- `clip: true` on any item: rectangles (cut in the vertex shader), text, images and shader effects
+  (cut on the CPU) and hit-testing; nested clips intersect.
 - Anchors built on absolute anchor-lines: `fill`, `centerIn`, the four edges, both centers, margins,
   and center offsets — sibling and parent anchoring share one code path.
 - Positioners solve their layout in one binding and size to content reactively.
@@ -53,7 +58,8 @@ of scope. It is the reference for the asset's feature surface.
 - `property alias`, signals with parameters, `function` declarations, `Component.onCompleted`,
   `on<Property>Changed` handlers.
 - Themes: every theme implements the same controls (Panel, Label, Button, CheckBox, Switch, Slider,
-  ProgressBar, TabBar; ColorPicker shared) and exposes a live palette as the global `Theme`. Slate
+  ProgressBar, TabBar, FocusRing; TextField, ScrollBar and ColorPicker shared), all operable from the keyboard
+  and gamepad, and exposes a live palette as the global `Theme`. Slate
   ships built in; Frost, Arcade, Tome, Vector, Pebble, Bitmap and Pop come as samples, with free
   (OFL) fonts.
 
@@ -62,6 +68,13 @@ of scope. It is the reference for the asset's feature surface.
   `onPressed/onReleased/onClicked/onDoubleClicked/onPressAndHold/onEntered/onExited/
   onPositionChanged/onWheel` with `mouse` / `wheel` objects; `drag.target` with axis and bounds.
   New and legacy input backends.
+- Keyboard focus: `focus`, `activeFocus`, `activeFocusOnTab`, `visualFocus` (keyboard / gamepad focus
+  only, for focus rings), `forceActiveFocus()`; focus drops when its item is hidden or disabled.
+- `Keys` handlers (`onPressed`, `onReleased`, `on<Key>Pressed`) with an `event` object, accepted /
+  propagated to parents; `Quill.Key_*` codes and modifier flags.
+- Navigation: Tab / Backtab in tree order, spatial arrow-key navigation, `KeyNavigation.*` overrides.
+- Gamepad mapped to keys (D-pad / stick, South, East, shoulders, Start) and key repeat, read by
+  `QuillSurface` per surface (`KeyboardInput`, `GamepadInput`, `SpatialNavigation`).
 
 **Rendering**
 - Rectangles drawn in one draw call as SDF quads placed from a float data texture (scales to thousands;
@@ -94,11 +107,12 @@ of scope. It is the reference for the asset's feature surface.
 
 ## Not yet (planned — clean seams already exist)
 
-- **Input**: keyboard focus, `Keys` handlers, text-input fields, gamepad navigation.
-- **Layout & views**: clipping (`clip`), `Flickable` / scroll views, stretch/spacer layout managers.
+- **Input**: multi-line `TextEdit`, showing an input method's in-progress composition.
+- **Layout & views**: `ListView` (only visible rows built), rounded clipping, stretch/spacer layout
+  managers.
 - **Data**: `ListModel` and object-list models (`model.name`).
 - **Text**: rich text, kerning.
-- **Theme controls**: `TextField`, `Dropdown`, `Dialog`, `Tooltip`.
+- **Theme controls**: `Dropdown`, `Dialog`, `Tooltip`; theme-specific `TextField` looks.
 - **Animation**: `AnchorAnimation`, `ParentChange`, `AnchorChanges`, `PathAnimation`.
 - **Shaders**: `ShaderEffectSource` (render a sub-tree to a texture to post-process real UI).
 - **Surfaces**: helpers for ordering multiple stacked surfaces.

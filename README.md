@@ -50,13 +50,20 @@ generated solution. Setup per editor: [`Tooling~/README.md`](Tooling~/README.md)
 | `Image`           | `source` (a `Resources` path), `color` (tint)                                      |
 | `Row` `Column` `Grid` `Flow` | `spacing`, `padding` (+ per side); Grid also `columns`, `rowSpacing`, `columnSpacing` |
 | `Repeater`        | `model` (a count or a list, live); delegate gets `index` / `modelData`; `count`, `itemAt(i)` |
-| `MouseArea`       | `enabled`, `hoverEnabled`, reactive `pressed` / `containsMouse` / `mouseX` / `mouseY`, `drag.*`; `on*` signals |
+| `TextInput`       | one line of editable text: `text`, `color`, `selectionColor`, `selectedTextColor`, font properties as Text, `horizontalAlignment`, `verticalAlignment`, `cursorPosition`, `maximumLength`, `echoMode`, `passwordCharacter`, `readOnly`, `enabled`; read-only `selectedText`, `displayText`, `hovered`; `onAccepted` / `onEditingFinished` / `onTextEdited` — see [TextInput](#textinput) |
+| `MouseArea`       | `enabled`, `hoverEnabled`, `preventStealing`, reactive `pressed` / `containsMouse` / `mouseX` / `mouseY`, `drag.*`; `on*` signals |
+| `Flickable`       | a scrolling view: `contentWidth`, `contentHeight`, `contentX`, `contentY`, `flickableDirection`, `boundsBehavior`, `interactive`, `flickDeceleration`, `maximumFlickVelocity`; read-only `moving`, `flicking`, `dragging`, `atYBeginning`/`atYEnd`…, `visibleArea.*`; `flick()`, `cancelFlick()`, `returnToBounds()` — see [Scrolling](#scrolling--clip-and-flickable) |
 | `ShaderEffect`    | `shader` + any custom property, forwarded as a uniform                             |
 | `Object`          | — (a plain object for grouping properties, e.g. a theme palette)                   |
 | `Timer`           | `interval`, `running`, `repeat`, `triggeredOnStart`; `onTriggered`; `start/stop/restart()` |
 | Animations        | `NumberAnimation`, `PropertyAnimation`, `ColorAnimation`, `SpringAnimation`, `SmoothedAnimation`, `PauseAnimation`, `SequentialAnimation`, `ParallelAnimation`, `ScriptAction`, `PropertyAction` |
 | `Behavior`        | `Behavior on prop { Animation }`, `enabled`                                        |
 | `State` `PropertyChanges` `Transition` | see [States & transitions](#states--transitions)                |
+
+Every visual element can clip what's inside it to its bounds (`clip: true`, see
+[Scrolling](#scrolling--clip-and-flickable)), and takes keyboard focus: `focus`, `activeFocusOnTab`, read-only `activeFocus` /
+`visualFocus`, `KeyNavigation.*`, `Keys.*` handlers and `forceActiveFocus()` — see
+[Keyboard, gamepad & focus](#keyboard-gamepad--focus).
 
 `Rectangle` is drawn by the rectangle layer as an SDF quad (rounded corners + anti-aliased border).
 `Text` uses Unity's dynamic-font atlas; `Image` is a textured quad. Add new element types via
@@ -335,11 +342,13 @@ surface.Toggle();          // e.g. on the Escape key-down edge
 
 Don't use the component's `enabled` flag for this — disabling the MonoBehaviour stops its update
 loop but leaves the layer renderers active, so the last frame stays frozen on screen. `Visible`
-deactivates the whole layer subtree (nothing draws) and pauses ticking, then resumes on show.
+deactivates the whole layer subtree (nothing draws) and pauses ticking, then resumes on show. A hidden
+surface receives no pointer, keyboard or gamepad input.
 
 For multiple menus, give each its own `QuillSurface` + document and toggle them independently. If two
 visible surfaces must stack in a defined order, offset their layer render-queues (they currently
-use 4000–4100).
+use 4000–4100). Every visible surface reads the keyboard and gamepad; turn `KeyboardInput` /
+`GamepadInput` off on the ones underneath (see [Keyboard, gamepad & focus](#keyboard-gamepad--focus)).
 
 ## Custom shaders — ShaderEffect
 
@@ -460,7 +469,16 @@ written against one works with all of them:
 | `Slider`      | `value`, `from`, `to`, `step`, `enabled`; read-only `position`, `pressed`; `signal moved` |
 | `ProgressBar` | `value`, `from`, `to`; read-only `position`                                              |
 | `TabBar`      | `model` (list of strings), `currentIndex`, `enabled`; `signal activated(int index)`      |
+| `ScrollBar`   | `flickable`, `orientation` (`Quill.Vertical` / `Quill.Horizontal`), `interactive`, `enabled`; read-only `size`, `position`, `active` — hides itself when everything fits; Slate's, drawn with the theme's palette |
+| `TextField`   | `text`, `placeholderText`, `echoMode`, `maximumLength`, `readOnly`, `enabled`; read-only `hovered`; `signal accepted`, `editingFinished`, `textEdited` — Slate's, drawn with the theme's palette |
 | `ColorPicker` | `color`, `showAlpha`; `signal moved(color color)` — shared, drawn with the theme's palette |
+
+**Every control works from the keyboard and gamepad** too. Tab / Shift+Tab, the arrow keys and the
+D-pad move between them; Space or Return (gamepad South) clicks a Button and toggles a CheckBox or
+Switch; Left / Right step a Slider (by `step`, or a twentieth of the range; Home / End jump to the
+ends) and switch a TabBar's tab; a TextField takes typing. The focused control shows a `FocusRing`
+(also a theme control, so a theme can restyle it — Vector uses corner brackets) in `Theme.focus`,
+only while focus came from the keyboard or gamepad: a mouse user never sees it.
 
 ```quill
 Panel {
@@ -479,7 +497,7 @@ Panel {
 
 **The palette** is a global object, `Theme`, that every document and component can read:
 `name`, `tagline`, `background`, `surface`, `border`, `control`, `controlHover`, `accent`,
-`accentText`, `text`, `textMuted`, `radius`, `borderWidth`, `padding`, `spacing`, `font`,
+`accentText`, `text`, `textMuted`, `focus` (the focus ring), `radius`, `borderWidth`, `padding`, `spacing`, `font`,
 `titleFont`, `fontSize`, `titleSize`, `duration` (themes may add their own, e.g. Frost's glass
 settings). Use it to make your own elements fit the theme — `color: Theme.surface`,
 `font.family: Theme.font` — and write to it to restyle live: `Theme.accent = "#ff5a5f"` recolours
@@ -590,9 +608,12 @@ Rectangle {
 
 Signals: `onPressed`, `onReleased`, `onClicked`, `onDoubleClicked`, `onPressAndHold`, `onEntered`,
 `onExited`, `onPositionChanged` — each pointer handler gets a `mouse` object (`mouse.x`, `mouse.y`,
-`mouse.button`) — and `onWheel` with a `wheel` object (`wheel.angleDelta.y`, 120 per notch). The
-second click of a double-click doesn't also emit `clicked`. Hit-testing picks the topmost area (later
-in tree order); `enabled: false` opts out; wheel events go to the topmost area that handles them.
+`mouse.button`) — `onWheel` with a `wheel` object (`wheel.angleDelta.y`, 120 per notch), and
+`onCanceled` when a Flickable takes the press over (no release or click follows; `preventStealing:
+true` keeps it). The second click of a double-click doesn't also emit `clicked`. Hit-testing picks the
+topmost area (later in tree order); `enabled: false` opts out; parts clipped away by `clip` don't take
+the pointer. Wheel events go to the topmost area that handles them; one that sets `wheel.accepted =
+false` lets the Flickable under it scroll instead.
 
 **Dragging** is declarative:
 
@@ -618,9 +639,162 @@ var area = (QuillMouseArea)_engine.FindId("click");
 area.Clicked += () => Debug.Log("clicked from C#");
 ```
 
-Input is read by `QuillSurface` (new Input System if present, else the legacy manager) and fed to
+Pointer input is read by `QuillSurface` (new Input System if present, else the legacy manager) and fed to
 `QuillEngine.Update(dt, x, y, down, wheelX, wheelY)`. To drive it from your own input source, call
 that overload yourself.
+
+## Keyboard, gamepad & focus
+
+One item at a time has **active focus**: it gets the key events, and a `TextInput` with focus gets
+the typing. `QuillSurface` reads the keyboard (Input System or legacy Input Manager) and the gamepad
+(Input System) and feeds them to its document, with key repeat.
+
+```quill
+Rectangle {
+    id: play
+    activeFocusOnTab: true                   // a stop for Tab and arrow / D-pad navigation
+    focus: true                              // focused when the document loads
+    color: activeFocus ? Theme.accent : Theme.control
+    border.width: visualFocus ? 2 : 0        // a focus ring, only for keyboard / gamepad users
+    Keys.onReturnPressed: startGame()
+    Keys.onSpacePressed: startGame()
+    KeyNavigation.down: options              // override the automatic choice
+}
+```
+
+**Focus.** `focus: true` (declared, or assigned later) takes focus; `forceActiveFocus()` does the same
+from a handler; `activeFocus` (read-only) is true on the focused item. `visualFocus` (read-only) is
+`activeFocus` that came from the keyboard or gamepad — bind focus rings to it; any pointer press hides
+it. An item loses focus when it, or an ancestor, is hidden or has `enabled: false`. Pressing on a
+`TextInput` focuses it; pressing anywhere outside its tab stop ends the editing.
+
+**Navigation.** Items with `activeFocusOnTab: true` are the stops. Tab / Shift+Tab (Backtab) walk them
+in tree order and wrap; the arrow keys and D-pad move to the nearest stop in that direction (set
+`SpatialNavigation` off on the surface to keep arrows for your own handlers). `KeyNavigation.tab`,
+`backtab`, `up`, `down`, `left` and `right` name the next item explicitly. Navigation only happens
+when no handler accepted the key, so a Slider keeps Left / Right and a TabBar passes them on at its
+ends. With nothing focused, the first Tab or arrow focuses the first stop.
+
+**Keys handlers** run on the focused item and then bubble to its parents until one accepts the event
+(with nothing focused, keys go to the root). Each gets an `event`: `event.key` (`Quill.Key_*`),
+`event.modifiers` (`Quill.ShiftModifier`, `ControlModifier`, `AltModifier`, `MetaModifier` as bit
+flags), `event.text`, `event.isAutoRepeat`, `event.gamepad`, and `event.accepted`:
+
+| Handler | |
+|---|---|
+| `Keys.onReturnPressed`, `onEnterPressed`, `onEscapePressed`, `onSpacePressed`, `onTabPressed`, `onBacktabPressed`, `onUpPressed`, `onDownPressed`, `onLeftPressed`, `onRightPressed`, `onDeletePressed`, `onBackPressed`, `onMenuPressed`, `onDigit0Pressed` … `onDigit9Pressed` | one key; the event starts **accepted** (set `event.accepted = false` to let it carry on) |
+| `Keys.onPressed` | every key, after the specific handler; starts **not accepted** |
+| `Keys.onReleased` | every key release |
+
+```quill
+Item {
+    focus: true
+    Keys.onEscapePressed: menu.visible = !menu.visible
+    Keys.onPressed: {
+        if (event.key == Quill.Key_S && (event.modifiers & Quill.ControlModifier)) { save(); event.accepted = true }
+    }
+}
+```
+
+On macOS, Cmd reports as `ControlModifier` (and Ctrl as `MetaModifier`), so Ctrl+C / Cmd+C read the same.
+
+**Gamepad.** The gamepad drives the UI as keys, so one set of handlers covers both: D-pad and left
+stick → arrows, South (A / Cross) → Return, East (B / Circle) → Escape, left / right shoulder →
+Backtab / Tab, Start → Menu. `event.gamepad` tells them apart when it matters.
+
+### TextInput
+
+One line of editable text — the building block of the themes' `TextField`. It has a caret, selection
+(Shift+arrows, mouse drag, double-click a word, Ctrl+A), word jumps (Ctrl / Alt + arrows), Home / End,
+the clipboard (Ctrl+C / X / V, the system clipboard), `maximumLength`, `readOnly` and password echo
+(`echoMode: TextInput.Password` or `NoEcho`; `passwordCharacter`; `PasswordEchoOnEdit` behaves as
+`Password` for now). Password fields never copy their text out. Text wider
+than the item scrolls to keep the caret in view.
+
+```quill
+TextInput {
+    id: name
+    width: 220; height: 32
+    verticalAlignment: Text.AlignVCenter
+    color: Theme.text; fontSize: Theme.fontSize
+    maximumLength: 20
+    onAccepted: player.rename(text)          // Return / Enter
+}
+```
+
+`onAccepted` fires on Return / Enter, `onEditingFinished` on Return / Enter or when focus leaves, and
+`onTextEdited` when the user changes the text (not when a binding or your code does). Methods:
+`selectAll()`, `select(start, end)`, `deselect()`, `clear()`, `copy()`, `cut()`, `paste()`,
+`insert(pos, text)`, `remove(start, end)`, `positionAt(x)`. Keys it doesn't use (Up / Down, Tab,
+Escape) carry on to navigation and the parents.
+
+### Surface settings & C#
+
+| `QuillSurface` setting | Meaning |
+|---|---|
+| `KeyboardInput`     | send the keyboard and typed text to this surface's document (default on) |
+| `GamepadInput`      | send the gamepad as keys (default on) |
+| `SpatialNavigation` | arrows and the D-pad move focus between stops (default on) |
+
+Quill doesn't consume input: your game still sees the keys. While the player types, check
+`surface.Engine.ActiveFocusItem is QuillTextInput` before treating keys as game controls.
+`engine.ActiveFocusChanged` reports focus moves; `engine.ForceActiveFocus(item)` / `ClearFocus()` set
+it. To drive a document from your own input, call `engine.KeyPress(key, modifiers)` (returns whether
+something handled it), `engine.KeyRelease(...)` and `engine.InputText(text)` with `QuillKeys` codes.
+
+## Scrolling — clip and Flickable
+
+**`clip: true`** on any item cuts everything inside it to its bounds: rectangles, text, images and
+shader effects, and the pointer (a button scrolled out of view can't be clicked). Clips nest, each
+inside the one around it. A `TextInput` always clips its own text.
+
+**`Flickable`** is a view onto content larger than itself. The items you put in it scroll:
+
+```quill
+Flickable {
+    id: list
+    width: 320; height: 240
+    Column {
+        width: parent.width                  // the view's width
+        Repeater {
+            model: 40
+            Button { text: "Level " + (index + 1); onClicked: play(index) }
+        }
+    }
+}
+ScrollBar { flickable: list; anchors.right: list.right; anchors.top: list.top; anchors.bottom: list.bottom }
+```
+
+- **Content.** Children go into its `contentItem`, which moves by `contentX` / `contentY`.
+  `contentWidth` / `contentHeight` follow the content's extent unless you set them; inside, `parent`
+  is the content item, the view's size while the content size is automatic.
+- **Pointer.** Drag it, or flick it: released with speed, it carries on and slows down
+  (`flickDeceleration`, `maximumFlickVelocity`). A press that starts on a button still reaches the
+  button; once the pointer has clearly moved along a direction the Flickable scrolls, it takes the drag
+  over and the button gets `onCanceled` instead of a click. A press on a moving Flickable just stops it.
+- **Bounds.** `boundsBehavior`: `Flickable.DragAndOvershootBounds` (default — drag past the ends with
+  resistance, flicks overshoot a little, then it settles back), `DragOverBounds`, `OvershootBounds`,
+  `StopAtBounds`.
+- **Direction.** `flickableDirection`: `Flickable.AutoFlickDirection` (default: the axes where the
+  content is larger than the view), `HorizontalFlick`, `VerticalFlick`, `HorizontalAndVerticalFlick`.
+- **Wheel.** Scrolls smoothly (72 px a notch) the innermost Flickable under the pointer that can still
+  move that way, so a list inside a scrolling page scrolls first, then the page. A horizontal-only one
+  scrolls with the vertical wheel too.
+- **Keyboard and gamepad.** Moving focus to an item inside a Flickable scrolls it into view, so Tab,
+  the arrows and the D-pad walk a list of buttons. From inside a list the arrows first look for the
+  next item in the same list (scrolled into view or not), then beyond it. A Flickable with
+  `activeFocusOnTab: true` (a list of plain text) scrolls itself with the arrows, Home / End and
+  Page Up / Down, and passes the arrows on at its ends; Page Up / Down also reach it from any item
+  focused inside.
+- **State** for bindings: `moving`, `flicking`, `dragging`, `atXBeginning`, `atXEnd`, `atYBeginning`,
+  `atYEnd`, `horizontalVelocity`, `verticalVelocity`, and `visibleArea.xPosition`, `widthRatio`,
+  `yPosition`, `heightRatio` (what a scroll bar shows). Signals: `onMovementStarted`,
+  `onMovementEnded`, `onFlickStarted`, `onFlickEnded`. Methods: `flick(xVelocity, yVelocity)`,
+  `cancelFlick()`, `returnToBounds()`.
+
+Setting `contentY` (or binding it) scrolls instantly; dragging, flicking and the wheel replace such a
+binding, as any assignment does. Unlike QML's, a Flickable clips by default — set `clip: false` to
+let the content show outside it.
 
 ## Expressions & bindings
 
@@ -648,7 +822,8 @@ Expressions are a JavaScript subset:
   `"%1 of %2".arg(a).arg(b)`; lists `indexOf`, `includes`, `join`, `slice`, `concat`;
 - globals `parseInt`, `parseFloat`, `Number`, `String`, `Boolean`, `isNaN`, `isFinite`, `qsTr`;
 - enums: `Easing.*`, `Animation.Infinite`, `Text.AlignHCenter` / `Text.WordWrap` / `Text.ElideRight`…,
-  `Drag.XAxis`…, `Quill.AlignLeft`…, `Quill.LeftButton`…
+  `Drag.XAxis`…, `Quill.AlignLeft`…, `Quill.LeftButton`…, `Quill.Key_Escape`…, `Quill.ShiftModifier`…,
+  `TextInput.Password`…, `Flickable.VerticalFlick`…
 
 Custom properties: `property real phase: 0` (also `int`, `bool`, `string`, `color`, `var`, `list<T>`,
 `alias`). Colours accept `"red"`, `"#RRGGBB"` and `"#RRGGBBAA"`.
@@ -699,7 +874,10 @@ of that name in scope. Loops are capped at 100 000 iterations and recursion at 6
 - **Layer ordering** is fixed: text over effects/images over rectangles, not strictly interleaved by
   tree order. Fine for the common case (labels/icons on top of panels); a future unified per-quad path
   would remove it.
-- **No clipping yet** (`clip: true`), so no scroll views; no keyboard focus or text input.
+- **Clipping is rectangular** (a rounded panel's corners don't clip), and there is no `ListView` yet:
+  a `Flickable` + `Column` + `Repeater` builds every row, which suits lists of tens to a few hundred.
+- **TextInput** is one line, and an input method's in-progress composition isn't shown (committed
+  text arrives normally).
 - **Text** uses Unity dynamic fonts (`font.family`); no rich text or kerning yet.
 - **Images** load from `Resources` by path string (`source: "icons/logo"` → `Resources/icons/logo`).
 - Rectangles are uploaded via a float data texture (safety ceiling 131072) and drawn in one draw call.
@@ -714,8 +892,8 @@ of that name in scope. Loops are capped at 100 000 iterations and recursion at 6
 
 ## Suggested next layers
 
-Keyboard focus, `Keys` handlers and a `TextInput`; clipping and a `Flickable`/scroll view;
-`ShaderEffectSource`; `ListModel`; rich text; `Loader`; more theme controls (`TextField`, `Dropdown`,
+A unified tree-ordered draw path; `ListModel` and a `ListView` that only builds visible rows;
+`ShaderEffectSource`; rich text; `Loader`; a multi-line `TextEdit`; more theme controls (`Dropdown`,
 `Dialog`, `Tooltip`).
 
 ## Inspiration: Qt and QML

@@ -7,7 +7,8 @@
 // bounds (plus the anti-aliasing / softness margin); the fragment shader evaluates that one rounded
 // box's signed distance. A pixel is therefore shaded only by the rectangles that cover it, instead
 // of every pixel looping over every rectangle. Quads draw in mesh order, which the GPU blends in
-// order, so rectangles composite back-to-front exactly as the element tree lists them.
+// order, so rectangles composite back-to-front exactly as the element tree lists them. A rect inside
+// a clipping item (`clip: true`) has its quad cut to the clip rectangle, so nothing outside is shaded.
 Shader "Quill/Surface"
 {
     Properties { }
@@ -39,22 +40,25 @@ Shader "Quill/Surface"
                 float4 color;       // rgba straight-alpha fill
                 float4 prm;         // x = radius, y = opacity, z = border width, w = edge softness (px)
                 float4 borderColor; // rgba straight-alpha border
+                float4 clipRect;    // clip rectangle: xy = top-left px, zw = bottom-right px
             };
 
-            // Four RGBA32F texels per rect, 256 rects per 1024-texel row (see QuillRectLayer).
+            // Five RGBA32F texels per rect, 256 rects per 1280-texel row (see QuillRectLayer).
             Texture2D<float4> _RectData;
             #define RECTS_PER_ROW_SHIFT 8
             #define RECTS_PER_ROW_MASK  255
+            #define TEXELS_PER_RECT     5
 
             QuillRect LoadRect(int idx)
             {
-                int x = (idx & RECTS_PER_ROW_MASK) * 4;
+                int x = (idx & RECTS_PER_ROW_MASK) * TEXELS_PER_RECT;
                 int y = idx >> RECTS_PER_ROW_SHIFT;
                 QuillRect r;
                 r.bounds      = _RectData.Load(int3(x,     y, 0));
                 r.color       = _RectData.Load(int3(x + 1, y, 0));
                 r.prm         = _RectData.Load(int3(x + 2, y, 0));
                 r.borderColor = _RectData.Load(int3(x + 3, y, 0));
+                r.clipRect    = _RectData.Load(int3(x + 4, y, 0));
                 return r;
             }
 
@@ -87,6 +91,10 @@ Shader "Quill/Surface"
                 // anti-aliasing, or half the softness feather plus that.
                 float  pad = 0.5 * soft + 1.0;
                 float2 corner = r.bounds.xy - pad + v.uv.xy * (size + 2.0 * pad);
+
+                // Clipping: cut the quad to the clip rectangle. The fragment position still comes from
+                // the (moved) corner, so the shape inside is unchanged — only less of it is drawn.
+                corner = clamp(corner, r.clipRect.xy, r.clipRect.zw);
 
                 // Empty or fully transparent rects collapse to a point: no fragments at all.
                 if (size.x <= 0.0 || size.y <= 0.0 || r.prm.y <= 0.0) corner = r.bounds.xy;

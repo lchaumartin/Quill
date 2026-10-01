@@ -141,7 +141,8 @@ namespace Quill
                     if (ctx.Locals != null && ctx.Locals.ContainsKey(id.Name)) { ctx.Locals[id.Name] = value; return; }
                     var self = ctx.Self;
                     if (self == null) return;
-                    (self.FindPropertyInScope(id.Name) ?? self.Property(id.Name)).SetValue(value);
+                    (QuillObject.IsLazyFocusProperty(id.Name) && self is QuillItem ? self.Property(id.Name)
+                        : self.FindPropertyInScope(id.Name) ?? self.Property(id.Name)).SetValue(value);
                     return;
                 }
 

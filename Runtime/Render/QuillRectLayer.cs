@@ -9,12 +9,13 @@ using UnityEngine;
 namespace Quill
 {
     /// <summary>
-    /// The rectangle layer. All rectangles are packed into a float data texture (four RGBA32F texels
+    /// The rectangle layer. All rectangles are packed into a float data texture (five RGBA32F texels
     /// per rect) and drawn by <c>Quill/Surface</c> in one draw call: a static mesh of one quad per
     /// rect, which the vertex shader places from the texture. Each pixel is shaded only by the rects
     /// that cover it (like any sprite batch), so GPU cost follows the area drawn, not rects × screen
     /// pixels. Per frame only the data texture is uploaded; the mesh changes only when the rect count
-    /// does. No small fixed cap, so it scales to thousands of rects.
+    /// does. No small fixed cap, so it scales to thousands of rects. A clipped rect's quad is cut to
+    /// its clip rectangle in the vertex shader; rects entirely outside it aren't uploaded at all.
     ///
     /// A texture is used instead of a ComputeBuffer / StructuredBuffer because WebGL has no compute
     /// buffers at all, and many GLES3 mobile GPUs expose zero storage buffers to the fragment stage.
@@ -29,16 +30,20 @@ namespace Quill
             public Vector4 color;        // rgba fill
             public Vector4 prm;          // x = radius, y = opacity, z = border width, w = edge softness
             public Vector4 borderColor;  // rgba border
+            public Vector4 clip;         // xy = top-left px, zw = bottom-right px of the clip rectangle
         }
 
         // Data texture layout: TexWidth texels per row, TexelsPerRect texels per rect.
         // Keep in sync with Quill/Surface (RectsPerRowShift).
-        private const int TexelsPerRect = 4;
-        private const int TexWidth = 1024;
-        private const int RectsPerRow = TexWidth / TexelsPerRect; // 256
+        private const int TexelsPerRect = 5;
+        private const int RectsPerRow = 256;
+        private const int TexWidth = RectsPerRow * TexelsPerRect;  // 1280
 
         // Safety ceiling so a runaway document can't allocate unbounded GPU memory.
         private const int MaxRects = 1 << 17; // 131072 → 512 rows
+
+        // "No clip": a rectangle far larger than any screen.
+        private static readonly Vector4 NoClip = new Vector4(-1e7f, -1e7f, 1e7f, 1e7f);
 
         private readonly Material _material;
         private Texture2D _data;
@@ -89,29 +94,42 @@ namespace Quill
         {
             if (_material == null) return;
 
-            int count = Mathf.Min(rects.Count, MaxRects);
-            EnsureCapacity(count);
+            int listed = Mathf.Min(rects.Count, MaxRects);
+            EnsureCapacity(listed);
 
-            if (count > 0)
+            int count = 0;
+            if (listed > 0)
             {
                 // Write straight into the texture's CPU copy — no intermediate managed array.
                 NativeArray<RectGpu> cpu = _data.GetPixelData<RectGpu>(0);
-                for (int i = 0; i < count; i++)
+                for (int i = 0; i < listed; i++)
                 {
                     var r = rects[i];
+                    float x = r.AbsX(), y = r.AbsY(), rw = r.Num("width"), rh = r.Num("height");
+                    Vector4 clip = NoClip;
+                    if (r.Clipped)
+                    {
+                        // Entirely outside its clip (with the soft edge's reach): not drawn at all.
+                        float reach = 0.5f * Mathf.Max(0f, r.Num("softness")) + 1f;
+                        if (x - reach >= r.ClipR || y - reach >= r.ClipB || x + rw + reach <= r.ClipL || y + rh + reach <= r.ClipT
+                            || r.ClipR <= r.ClipL || r.ClipB <= r.ClipT)
+                            continue;
+                        clip = new Vector4(r.ClipL, r.ClipT, r.ClipR, r.ClipB) * scale;
+                    }
                     Color c = QuillConvert.ToColor(r.FindProperty("color")?.Raw);
                     Color bc = QuillConvert.ToColor(r.FindProperty("border.color")?.Raw);
 
-                    cpu[i] = new RectGpu
+                    cpu[count++] = new RectGpu
                     {
-                        bounds = new Vector4(r.AbsX(), r.AbsY(), r.Num("width"), r.Num("height")) * scale,
+                        bounds = new Vector4(x, y, rw, rh) * scale,
                         color = new Vector4(c.r, c.g, c.b, c.a),
                         prm = new Vector4(r.Num("radius") * scale, Mathf.Clamp01(r.EffectiveOpacity()),
                                           r.Num("border.width") * scale, Mathf.Max(0f, r.Num("softness")) * scale),
                         borderColor = new Vector4(bc.r, bc.g, bc.b, bc.a),
+                        clip = clip,
                     };
                 }
-                _data.Apply(false, false);
+                if (count > 0) _data.Apply(false, false);
             }
 
             SetDrawnCount(count);

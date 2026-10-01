@@ -12,6 +12,7 @@ Rectangle {
     color: Theme.background
 
     property int clicks: 0
+    property string player: ""
     property color startAccent: "#000000"
     property real load: 0
     NumberAnimation on load { from: 0; to: 1; duration: 3200; loops: Animation.Infinite; easing.type: Easing.InOutCubic }
@@ -160,48 +161,120 @@ Rectangle {
 
                         Label { kind: "heading"; text: "Tabs" }
                         TabBar { id: tabs; model: ["Video", "Audio", "Controls"] }
-                        Label {
+                        Item {
                             width: root.inner
-                            wrapMode: Text.WordWrap
-                            kind: "caption"
-                            text: ["Resolution, frame rate and quality presets would live here.",
-                                   "Volume sliders and the output device would live here.",
-                                   "Key bindings and mouse sensitivity would live here."][tabs.currentIndex]
+                            height: 128
+
+                            Label {
+                                width: root.inner
+                                wrapMode: Text.WordWrap
+                                kind: "caption"
+                                visible: tabs.currentIndex < 2
+                                text: ["Resolution, frame rate and quality presets would live here.",
+                                       "Volume sliders and the output device would live here."][Math.min(tabs.currentIndex, 1)]
+                            }
+
+                            // A scrolling list: drag or flick it, use the wheel, or focus it and use the arrow keys.
+                            Item {
+                                anchors.fill: parent
+                                visible: tabs.currentIndex == 2
+
+                                Flickable {
+                                    id: bindings
+                                    anchors.fill: parent
+                                    activeFocusOnTab: true
+                                    Column {
+                                        width: parent.width - 20
+                                        spacing: 4
+                                        Repeater {
+                                            model: ["Move forward · W", "Move back · S", "Strafe left · A", "Strafe right · D",
+                                                    "Jump · Space", "Crouch · C", "Sprint · Shift", "Interact · E",
+                                                    "Reload · R", "Map · M", "Inventory · I", "Pause · Escape"]
+                                            Item {
+                                                width: parent.width
+                                                height: 26
+                                                Label { text: modelData.split(" · ")[0]; anchors.verticalCenter: parent.verticalCenter }
+                                                Label {
+                                                    kind: "caption"
+                                                    text: modelData.split(" · ")[1]
+                                                    anchors.right: parent.right
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                ScrollBar {
+                                    flickable: bindings
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.bottom: parent.bottom
+                                }
+                                FocusRing { visible: bindings.visualFocus }
+                            }
                         }
                     }
                 }
             }
 
-            // ---- Accent: the palette is live ----------------------------------------------------------
-            Panel {
-                width: root.panelWidth
-                height: accent.height + 2 * Theme.padding
-                Column {
-                    id: accent
-                    x: Theme.padding
-                    y: Theme.padding
-                    width: root.inner
-                    spacing: Theme.spacing
+            Column {
+                spacing: 24
 
-                    Label { kind: "heading"; text: "Accent" }
-                    Label {
+                // ---- Accent: the palette is live --------------------------------------------------
+                Panel {
+                    width: root.panelWidth
+                    height: accent.height + 2 * Theme.padding
+                    Column {
+                        id: accent
+                        x: Theme.padding
+                        y: Theme.padding
                         width: root.inner
-                        wrapMode: Text.WordWrap
-                        kind: "caption"
-                        text: "The theme's palette is live: pick a colour and every control follows."
+                        spacing: Theme.spacing
+
+                        Label { kind: "heading"; text: "Accent" }
+                        Label {
+                            width: root.inner
+                            wrapMode: Text.WordWrap
+                            kind: "caption"
+                            text: "The theme's palette is live: pick a colour and every control follows."
+                        }
+                        ColorPicker {
+                            id: picker
+                            width: root.inner
+                            showAlpha: false
+                            onMoved: Theme.accent = color
+                        }
+                        Button {
+                            text: "Restore"
+                            enabled: !Color.colorEqual(Theme.accent, root.startAccent)
+                            onClicked: {
+                                Theme.accent = root.startAccent
+                                picker.color = root.startAccent
+                            }
+                        }
                     }
-                    ColorPicker {
-                        id: picker
+                }
+
+                // ---- Text -------------------------------------------------------------------------
+                Panel {
+                    width: root.panelWidth
+                    height: textColumn.height + 2 * Theme.padding
+                    Column {
+                        id: textColumn
+                        x: Theme.padding
+                        y: Theme.padding
                         width: root.inner
-                        showAlpha: false
-                        onMoved: Theme.accent = color
-                    }
-                    Button {
-                        text: "Restore"
-                        enabled: !Color.colorEqual(Theme.accent, root.startAccent)
-                        onClicked: {
-                            Theme.accent = root.startAccent
-                            picker.color = root.startAccent
+                        spacing: Theme.spacing
+
+                        Label { kind: "heading"; text: "Text" }
+                        TextField { width: root.inner; placeholderText: "Player name"; maximumLength: 20; onAccepted: root.player = text }
+                        TextField { width: root.inner; placeholderText: "Password"; echoMode: TextInput.Password }
+                        Label {
+                            width: root.inner
+                            wrapMode: Text.WordWrap
+                            kind: "caption"
+                            text: root.player.length == 0 ? "Type a name and press Return. Tab, the arrow keys or a gamepad move between controls."
+                                                          : "Welcome, " + root.player + "."
                         }
                     }
                 }

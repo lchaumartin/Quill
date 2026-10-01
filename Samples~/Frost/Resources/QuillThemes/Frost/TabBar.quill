@@ -11,6 +11,19 @@ Row {
     property bool enabled: true
     signal activated(int index)
 
+    // Keyboard / gamepad: Tab or the D-pad reaches it; Left / Right switch tabs, and past the
+    // first or last tab move on to the neighbouring control.
+    activeFocusOnTab: true
+    function select(i) { control.currentIndex = i; control.activated(i) }
+    Keys.onLeftPressed: {
+        if (control.currentIndex > 0) control.select(control.currentIndex - 1)
+        else event.accepted = false
+    }
+    Keys.onRightPressed: {
+        if (control.currentIndex < control.model.length - 1) control.select(control.currentIndex + 1)
+        else event.accepted = false
+    }
+
     spacing: 6
     opacity: control.enabled ? 1 : 0.4
 
@@ -25,7 +38,7 @@ Row {
             enabled: control.enabled
             active: index == control.currentIndex
             restTint: "#ffffff0d"
-            onClicked: { control.currentIndex = index; control.activated(index) }
+            onClicked: control.select(index)
 
             Text {
                 id: tabLabel
@@ -35,6 +48,8 @@ Row {
                 font.family: index == control.currentIndex ? Theme.titleFont : Theme.font
                 anchors.centerIn: parent
             }
+
+            FocusRing { visible: control.visualFocus && index == control.currentIndex; gap: 3; radius: 19 + gap }
         }
     }
 }

@@ -27,10 +27,7 @@ namespace Quill
         private static readonly int IdOpacity = Shader.PropertyToID("_Opacity");
 
         private readonly Vector3[] _v = new Vector3[4];
-        private static readonly Vector2[] Uv =
-        {
-            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(1f, 0f), new Vector2(0f, 0f)
-        };
+        private readonly Vector2[] _uv = new Vector2[4];
         private static readonly int[] Tris = { 0, 1, 2, 0, 2, 3 };
 
         public QuillImageLayer(Transform parent, int renderQueue)
@@ -45,10 +42,10 @@ namespace Quill
         {
             if (_shader == null) return;
 
-            for (int i = 0; i < images.Count; i++)
+            int i = 0;
+            for (int n = 0; n < images.Count; n++)
             {
-                EnsurePool(i);
-                var img = images[i];
+                var img = images[n];
 
                 float x = img.AbsX(), y = img.AbsY();
                 float iw = img.Num("width"), ih = img.Num("height");
@@ -57,16 +54,26 @@ namespace Quill
                 if (iw <= 0f && tex != null) iw = tex.width;
                 if (ih <= 0f && tex != null) ih = tex.height;
 
-                // Quad corners: TL, TR, BR, BL — matching Uv.
-                _v[0] = QuillSurface.ToClip(x, y, w, h);
-                _v[1] = QuillSurface.ToClip(x + iw, y, w, h);
-                _v[2] = QuillSurface.ToClip(x + iw, y + ih, w, h);
-                _v[3] = QuillSurface.ToClip(x, y + ih, w, h);
+                // Cut to the clip rectangle (texture coordinates follow); skip if nothing shows.
+                float x0 = x, y0 = y, x1 = x + iw, y1 = y + ih;
+                if (!QuillSurface.ClipQuad(img, ref x0, ref y0, ref x1, ref y1, out float s0, out float t0, out float s1, out float t1))
+                    continue;
+                EnsurePool(i);
+
+                // Quad corners: TL, TR, BR, BL (texture v runs bottom to top).
+                _v[0] = QuillSurface.ToClip(x0, y0, w, h);
+                _v[1] = QuillSurface.ToClip(x1, y0, w, h);
+                _v[2] = QuillSurface.ToClip(x1, y1, w, h);
+                _v[3] = QuillSurface.ToClip(x0, y1, w, h);
+                _uv[0] = new Vector2(s0, 1f - t0);
+                _uv[1] = new Vector2(s1, 1f - t0);
+                _uv[2] = new Vector2(s1, 1f - t1);
+                _uv[3] = new Vector2(s0, 1f - t1);
 
                 var mesh = _meshes[i];
                 mesh.Clear();
                 mesh.vertices = _v;
-                mesh.uv = Uv;
+                mesh.uv = _uv;
                 mesh.triangles = Tris;
                 mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e5f);
 
@@ -76,10 +83,11 @@ namespace Quill
                 mat.SetFloat(IdOpacity, Mathf.Clamp01(img.EffectiveOpacity()));
 
                 _pool[i].SetActive(true);
+                i++;
             }
 
-            for (int i = images.Count; i < _pool.Count; i++)
-                _pool[i].SetActive(false);
+            for (int k = i; k < _pool.Count; k++)
+                _pool[k].SetActive(false);
         }
 
         private void EnsurePool(int index)

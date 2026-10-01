@@ -16,6 +16,7 @@ Object {
     property color accentText: "#ffffff"
     property color text: "#111111"
     property color textMuted: "#5b5347"
+    property color focus: accent              // keyboard / gamepad focus ring
 
     property real radius: 12
     property real borderWidth: 3

@@ -11,6 +11,13 @@ Item {
     property bool enabled: true
     signal toggled
 
+    // Keyboard / gamepad: Tab or the D-pad reaches it; Space / Return (gamepad South) toggles.
+    activeFocusOnTab: true
+    function toggle() { control.checked = !control.checked; control.toggled() }
+    Keys.onSpacePressed: control.toggle()
+    Keys.onReturnPressed: control.toggle()
+    Keys.onEnterPressed: control.toggle()
+
     width: track.width + (control.text.length > 0 ? 12 + label.contentWidth : 0)
     height: Math.max(track.height, label.contentHeight)
     opacity: control.enabled ? 1 : 0.35
@@ -61,6 +68,8 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         enabled: control.enabled
-        onClicked: { control.checked = !control.checked; control.toggled() }
+        onClicked: control.toggle()
     }
+
+    FocusRing { visible: control.visualFocus }
 }

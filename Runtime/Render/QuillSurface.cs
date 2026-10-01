@@ -117,6 +117,19 @@ namespace Quill
         private readonly List<QuillImage> _imageList = new List<QuillImage>();
         private readonly List<QuillShaderEffect> _effectList = new List<QuillShaderEffect>();
         private readonly List<QuillText> _textList = new List<QuillText>();
+        private readonly List<QuillTextInput> _inputList = new List<QuillTextInput>();
+
+        [Header("Keyboard & gamepad")]
+        [Tooltip("Send keyboard and typed text to this surface's document (focus, Keys handlers, TextInput). "
+               + "With several visible surfaces, leave it on only for the one in front.")]
+        public bool KeyboardInput = true;
+
+        [Tooltip("Send the gamepad as keys: D-pad / left stick = arrows, South = Return, East = Escape, "
+               + "shoulders = Backtab / Tab, Start = Menu.")]
+        public bool GamepadInput = true;
+
+        [Tooltip("Arrow keys and the D-pad move focus to the nearest focusable item in that direction.")]
+        public bool SpatialNavigation = true;
 
         private GameObject _layerRoot;
         private bool _visible = true;
@@ -155,6 +168,10 @@ namespace Quill
             _text = new QuillTextLayer(t, 4100);
 
             _layerRoot.SetActive(_visible);
+
+            // TextInput copy / paste use the system clipboard.
+            QuillClipboard.Get = () => GUIUtility.systemCopyBuffer;
+            QuillClipboard.Set = text => GUIUtility.systemCopyBuffer = text;
         }
 
         private void LateUpdate()
@@ -177,6 +194,10 @@ namespace Quill
                     Engine.Root.Property("height").SetNumber(h);
                 }
 
+                // Keys and typed text first (handlers run as they arrive), then the pointer and the tick.
+                Engine.SpatialNavigation = SpatialNavigation;
+                _keys.Poll(Engine, KeyboardInput, GamepadInput);
+
                 // Read the pointer in surface pixels (top-left origin) and tick the engine.
                 ReadPointer(out float px, out float py, out bool down, out float wheelX, out float wheelY);
                 Engine.Update(Time.deltaTime, px / Scale, py / Scale, down, wheelX, wheelY);
@@ -185,7 +206,7 @@ namespace Quill
             using (s_CollectMarker.Auto())
             {
                 Engine.CollectVisuals(_visuals);
-                _rectList.Clear(); _imageList.Clear(); _effectList.Clear(); _textList.Clear();
+                _rectList.Clear(); _imageList.Clear(); _effectList.Clear(); _textList.Clear(); _inputList.Clear();
                 for (int i = 0; i < _visuals.Count; i++)
                 {
                     switch (_visuals[i])
@@ -194,19 +215,22 @@ namespace Quill
                         case QuillRectangle r: _rectList.Add(r); break;
                         case QuillImage img: _imageList.Add(img); break;
                         case QuillText t: _textList.Add(t); break;
+                        case QuillTextInput ti: _inputList.Add(ti); break;
                     }
                 }
             }
 
             // Layers take the surface size in Quill pixels; rects and text also get the scale so they
             // rasterise at full screen resolution (crisp edges and glyphs at any scale).
+            // TextInputs place their caret and selection rectangles before the rectangles are drawn.
+            using (s_TextMarker.Auto()) _text.LayoutInputs(_inputList, Scale, Engine.Time);
             using (s_RectsMarker.Auto()) _rects.Render(_rectList, w, h, Scale);
             using (s_LayersMarker.Auto())
             {
                 _images.Render(_imageList, w, h);
                 _effects.Render(_effectList, w, h);
             }
-            using (s_TextMarker.Auto()) _text.Render(_textList, w, h, Scale);
+            using (s_TextMarker.Auto()) _text.Render(_textList, _inputList, w, h, Scale);
         }
 
         /// <summary>Wheel units per notch handed to Quill (angle-delta convention: 120 per notch).</summary>
@@ -245,6 +269,11 @@ namespace Quill
             py = Mathf.Max(1, Screen.height) - my;
         }
 
+        private readonly QuillKeyInput _keys = new QuillKeyInput();
+
+        private void OnEnable() => _keys.Enable();
+        private void OnDisable() => _keys.Disable();
+
         private void OnDestroy()
         {
             _rects?.Dispose();
@@ -254,6 +283,27 @@ namespace Quill
         }
 
         // ---- Shared helpers --------------------------------------------------------------------
+
+        /// <summary>
+        /// Cut a quad (x0, y0)–(x1, y1) to <paramref name="item"/>'s clip rectangle. On return the
+        /// corners are the visible part and s0..s1 / t0..t1 the fractions of the original width /
+        /// height it covers (left to right, top to bottom), for interpolating texture coordinates.
+        /// False when nothing is left.
+        /// </summary>
+        internal static bool ClipQuad(QuillItem item, ref float x0, ref float y0, ref float x1, ref float y1,
+                                      out float s0, out float t0, out float s1, out float t1)
+        {
+            s0 = t0 = 0f; s1 = t1 = 1f;
+            if (!item.Clipped) return true;
+            float w = x1 - x0, h = y1 - y0;
+            float cx0 = Mathf.Max(x0, item.ClipL), cy0 = Mathf.Max(y0, item.ClipT);
+            float cx1 = Mathf.Min(x1, item.ClipR), cy1 = Mathf.Min(y1, item.ClipB);
+            if (cx1 <= cx0 || cy1 <= cy0) return false;
+            if (w > 0f) { s0 = (cx0 - x0) / w; s1 = (cx1 - x0) / w; }
+            if (h > 0f) { t0 = (cy0 - y0) / h; t1 = (cy1 - y0) / h; }
+            x0 = cx0; y0 = cy0; x1 = cx1; y1 = cy1;
+            return true;
+        }
 
         /// <summary>Pixel (top-left origin, y-down) → clip space (-1..1, y-up).</summary>
         internal static Vector3 ToClip(float px, float py, float w, float h)

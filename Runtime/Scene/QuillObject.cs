@@ -41,6 +41,9 @@ namespace Quill
         /// <summary>The list property this object was declared in (`states`, `transitions`), or null.</summary>
         public string AssignedTo;
 
+        /// <summary>The engine that built this object (null for engine-internal helper objects).</summary>
+        internal QuillEngine Engine;
+
         // C#-side subscribers, keyed the same way. Multiple listeners are multicast.
         private Dictionary<string, System.Action> _connections;
         private Dictionary<string, System.Action<object[]>> _argConnections;
@@ -118,6 +121,27 @@ namespace Quill
                 p = new QuillProperty(this, name);
                 _props[name] = p;
                 RegisterGroups(name);
+                Engine?.OnPropertyCreated(this, name, p);
+            }
+            return p;
+        }
+
+        /// <summary>
+        /// Focus properties every visual item has without paying for them up front: created (false)
+        /// the first time something reads them, so bindings like <c>visible: control.activeFocus</c>
+        /// see changes.
+        /// </summary>
+        public static bool IsLazyFocusProperty(string name)
+            => name == "activeFocus" || name == "visualFocus" || name == "focus" || name == "activeFocusOnTab";
+
+        /// <summary><see cref="FindProperty"/>, creating a lazy focus property on a visual item.</summary>
+        public QuillProperty FindPropertyOrLazy(string name)
+        {
+            var p = FindProperty(name);
+            if (p == null && this is QuillItem && !(this is QuillNonVisual) && IsLazyFocusProperty(name))
+            {
+                p = Property(name);
+                if (p.Raw == null) p.SetValue(QuillConvert.False);
             }
             return p;
         }

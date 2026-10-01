@@ -10,8 +10,15 @@ FrostPane {
     property bool highlighted: false
     property bool down: control.pressed
 
+    // Keyboard / gamepad: Tab or the D-pad reaches it; Space / Return (gamepad South) clicks.
+    activeFocusOnTab: true
+    Keys.onSpacePressed: control.clicked()
+    Keys.onReturnPressed: control.clicked()
+    Keys.onEnterPressed: control.clicked()
+
     interactive: true
     active: control.highlighted
+    hot: control.visualFocus
     width: Math.max(104, label.contentWidth + 44)
     height: 42
     corner: height / 2
@@ -25,4 +32,6 @@ FrostPane {
         font.family: control.highlighted ? Theme.titleFont : Theme.font
         anchors.centerIn: parent
     }
+
+    FocusRing { visible: control.visualFocus; radius: control.corner + gap }
 }
