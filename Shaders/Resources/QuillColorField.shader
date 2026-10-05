@@ -10,8 +10,8 @@
 //   mode 3  swatch: the colour with its alpha over a checkerboard
 //
 // Quill properties (all 0..1; unset = 0): mode, hue, saturation, value, alpha, cornerRadius (px).
-// Colours are produced as raw values, like Quill rectangles, so a swatch matches a Rectangle
-// filled with the same colour. The quad is authored in clip space by QuillShaderEffectLayer; it
+// Colours are computed in sRGB and converted for Linear projects exactly like Quill rectangles, so
+// a swatch matches a Rectangle filled with the same colour. The quad is authored in clip space by QuillShaderEffectLayer; it
 // needs no scene sampling, so this single SubShader serves URP and the built-in pipeline alike.
 Shader "Quill/ColorField"
 {
@@ -39,6 +39,20 @@ Shader "Quill/ColorField"
             #pragma vertex vert
             #pragma fragment frag
             #include "UnityCG.cginc"
+
+            // Quill colours are authored in sRGB (CSS-style hex). In a Linear-colour-space project the
+            // render target expects linear values and re-encodes them on write, so convert here or every
+            // colour comes out lighter and lower-contrast ("washed out"). Material colours set with
+            // SetColor are already converted by Unity; these colours bypass that path.
+            float3 QuillToLinear(float3 c)
+            {
+            #ifdef UNITY_COLORSPACE_GAMMA
+                return c;
+            #else
+                c = max(c, 0.0);
+                return lerp(c / 12.92, pow((c + 0.055) / 1.055, 2.4), step(0.04045, c));
+            #endif
+            }
 
             // Per-material (not global) so every field on screen keeps its own values under URP's
             // SRP Batcher.
@@ -127,7 +141,7 @@ Shader "Quill/ColorField"
                     col = lerp(checker(px), hsv2rgb(hue, saturation, value), saturate(alpha));
                 }
 
-                return float4(col, a * mask * saturate(_Opacity));
+                return float4(QuillToLinear(col), a * mask * saturate(_Opacity));
             }
             ENDCG
         }

@@ -168,6 +168,11 @@ All notable changes to **Quill** are documented here. This project adheres to
   load don't fire them (as in QML).
 
 ### Fixed
+- **Washed-out colours in Linear colour space projects.** Rectangle, text and ColorPicker colours
+  reached the render target as raw sRGB values, which Unity then encoded a second time, so every colour
+  came out lighter and flatter (URP templates default to Linear). The Surface, Text and ColorField
+  shaders now convert to linear when the project uses Linear; Gamma projects are unchanged, and colours
+  match the ones `Image` tints and `ShaderEffect` properties already got through `Material.SetColor`.
 - Replacing a binding — with a new one, or by assigning a value in a handler or from C# — now fully
   detaches the old one. Before, it kept listening to its dependencies and could overwrite the new
   value, e.g. a component's default binding beating a use-site override such as `display: ...`.

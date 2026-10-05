@@ -34,6 +34,20 @@ Shader "Quill/Surface"
 
             #include "UnityCG.cginc"
 
+            // Quill colours are authored in sRGB (CSS-style hex). In a Linear-colour-space project the
+            // render target expects linear values and re-encodes them on write, so convert here or every
+            // colour comes out lighter and lower-contrast ("washed out"). Material colours set with
+            // SetColor are already converted by Unity; these colours bypass that path.
+            float3 QuillToLinear(float3 c)
+            {
+            #ifdef UNITY_COLORSPACE_GAMMA
+                return c;
+            #else
+                c = max(c, 0.0);
+                return lerp(c / 12.92, pow((c + 0.055) / 1.055, 2.4), step(0.04045, c));
+            #endif
+            }
+
             struct QuillRect
             {
                 float4 bounds;      // xy = top-left px (y-down), zw = size px
@@ -107,8 +121,8 @@ Shader "Quill/Surface"
                 o.px = corner;
                 o.shape = float4(r.bounds.xy + half_, half_);
                 o.prm = float4(min(r.prm.x, min(half_.x, half_.y)), r.prm.y, max(r.prm.z, 0.0), soft);
-                o.color = r.color;
-                o.borderColor = r.borderColor;
+                o.color = float4(QuillToLinear(r.color.rgb), r.color.a);
+                o.borderColor = float4(QuillToLinear(r.borderColor.rgb), r.borderColor.a);
                 return o;
             }
 

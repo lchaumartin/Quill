@@ -23,6 +23,20 @@ Shader "Quill/Text"
             #pragma fragment frag
             #include "UnityCG.cginc"
 
+            // Quill colours are authored in sRGB (CSS-style hex). In a Linear-colour-space project the
+            // render target expects linear values and re-encodes them on write, so convert here or every
+            // colour comes out lighter and lower-contrast ("washed out"). Material colours set with
+            // SetColor are already converted by Unity; these colours bypass that path.
+            float3 QuillToLinear(float3 c)
+            {
+            #ifdef UNITY_COLORSPACE_GAMMA
+                return c;
+            #else
+                c = max(c, 0.0);
+                return lerp(c / 12.92, pow((c + 0.055) / 1.055, 2.4), step(0.04045, c));
+            #endif
+            }
+
             sampler2D _MainTex;
 
             struct appdata
@@ -44,7 +58,7 @@ Shader "Quill/Text"
                 // Already clip-space; _ProjectionParams.x (-1 on flipped targets) fixes Y.
                 o.pos = float4(v.vertex.x, v.vertex.y * _ProjectionParams.x, 0.0, 1.0);
                 o.uv = v.uv;
-                o.color = v.color;
+                o.color = float4(QuillToLinear(v.color.rgb), v.color.a);
                 return o;
             }
 
